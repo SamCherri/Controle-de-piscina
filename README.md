@@ -47,6 +47,7 @@ Sistema web completo para operação de piscinas em condomínios, consolidado a 
 - Migration inicial versionada em `prisma/migrations/20260318120000_init/migration.sql`.
 - `migration_lock.toml` configurado para PostgreSQL.
 - `prisma.config.ts` consolidado para schema, migrations e seed sem depender da configuração legada em `package.json`.
+- `package.json` apenas com scripts (`prisma:seed`, `build:railway` etc.), sem bloco legado duplicado de configuração Prisma.
 - `.env.example` pronto para ambiente local/ Railway.
 - Fluxo de deploy documentado para Railway com `prisma migrate deploy`.
 
@@ -154,6 +155,20 @@ Criadas pelo seed:
 
 ## Seed inicial
 
+O projeto está configurado com o seed centralizado em `prisma.config.ts`:
+
+```bash
+prisma db seed
+```
+
+Esse comando lê `schema`, `migrations`, `seed` e `datasource url` diretamente de `prisma.config.ts`, sem depender de bloco legado no `package.json`.
+
+ou via script:
+
+```bash
+npm run prisma:seed
+```
+
 O seed cria:
 
 - 1 usuário administrador;
@@ -181,19 +196,30 @@ Upload de imagem validado e protegido por sessão, com retorno do caminho públi
 
 ## Deploy no Railway
 
-Fluxo recomendado:
+Fluxo recomendado para evitar o erro `The table public.AdminUser does not exist in the current database`:
 
 1. Provisionar um banco PostgreSQL no Railway.
 2. Configurar `DATABASE_URL`, `AUTH_SECRET` e `NEXT_PUBLIC_APP_URL`.
-3. Executar `npm run prisma:migrate:deploy`.
-4. Executar `npm run build`.
-5. Publicar a aplicação com `npm run start`.
+3. Definir o **Build Command** como `npm run build:railway`.
+4. Definir o **Start Command** como `npm run start`.
+5. Opcionalmente, executar `npm run prisma:seed` uma vez para carregar os dados iniciais.
+
+### Por que isso resolve o problema de tabela ausente?
+
+O erro em produção acontecia porque a migration não era aplicada antes da aplicação subir. O script `npm run build:railway` executa, nesta ordem:
+
+1. `prisma migrate deploy`
+2. `prisma generate`
+3. `next build`
+
+Assim, a tabela `AdminUser` e as demais estruturas do schema passam a existir antes do build e do start da aplicação, mantendo o fluxo compatível com PostgreSQL no Railway e eliminando a causa do erro `The table public.AdminUser does not exist in the current database`.
 
 ## Comandos úteis
 
 ```bash
 npm run dev
 npm run build
+npm run build:railway
 npm run lint
 npm run prisma:generate
 npm run prisma:migrate:deploy
