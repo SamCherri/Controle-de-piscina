@@ -7,6 +7,7 @@ Sistema web completo para operação de piscinas em condomínios, consolidado a 
 - **Frontend + backend:** Next.js `14.2.35` com App Router.
 - **UI:** React 18 + Tailwind CSS.
 - **Banco relacional:** Prisma ORM com PostgreSQL.
+- **Configuração Prisma:** `prisma.config.ts` apontando schema, migrations versionadas e seed.
 - **Autenticação:** cookie HTTP-only assinado com JWT (`jose`).
 - **Criptografia de senha:** `bcryptjs`, isolado em utilitário dedicado.
 - **Uploads:** persistência local em `public/uploads` com utilitário dedicado, validação de tipo, extensão e tamanho.
@@ -45,6 +46,7 @@ Sistema web completo para operação de piscinas em condomínios, consolidado a 
 - Prisma em **PostgreSQL**.
 - Migration inicial versionada em `prisma/migrations/20260318120000_init/migration.sql`.
 - `migration_lock.toml` configurado para PostgreSQL.
+- `prisma.config.ts` consolidado para schema, migrations e seed sem depender da configuração legada em `package.json`.
 - `.env.example` pronto para ambiente local/ Railway.
 - Fluxo de deploy documentado para Railway com `prisma migrate deploy`.
 
@@ -103,6 +105,7 @@ lib/
   status.ts
   uploads.ts
   validators.ts
+prisma.config.ts
 prisma/
   migrations/
 public/
