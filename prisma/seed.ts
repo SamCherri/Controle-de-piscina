@@ -3,16 +3,23 @@ import { hashPassword } from '../lib/password';
 import { computeMeasurementStatuses } from '../lib/status';
 
 const prisma = new PrismaClient();
+const ADMIN_EMAIL = 'admin@piscina.com';
+const ADMIN_PASSWORD = 'admin123';
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
 
 async function main() {
-  const passwordHash = await hashPassword('admin123');
+  const adminEmail = normalizeEmail(ADMIN_EMAIL);
+  const passwordHash = await hashPassword(ADMIN_PASSWORD);
 
   await prisma.adminUser.upsert({
-    where: { email: 'admin@piscina.com' },
-    update: { name: 'Administrador', passwordHash },
+    where: { email: adminEmail },
+    update: { name: 'Administrador', email: adminEmail, passwordHash },
     create: {
       name: 'Administrador',
-      email: 'admin@piscina.com',
+      email: adminEmail,
       passwordHash
     }
   });
