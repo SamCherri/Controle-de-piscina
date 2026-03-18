@@ -1,22 +1,25 @@
-import { randomUUID } from 'node:crypto';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import { NextResponse } from 'next/server';
+import { requireApiSession } from '@/lib/auth';
+import { unauthorizedJsonResponse } from '@/lib/session';
+import { persistImageUpload } from '@/lib/uploads';
 
 export async function POST(request: Request) {
+  const user = await requireApiSession();
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
   const formData = await request.formData();
   const file = formData.get('file') as File | null;
+  const upload = await persistImageUpload(file);
 
-  if (!file || file.size === 0) {
+  if (!upload.ok) {
+    return NextResponse.json({ error: upload.error }, { status: 400 });
+  }
+
+  if (!upload.path) {
     return NextResponse.json({ error: 'Nenhum arquivo enviado.' }, { status: 400 });
   }
 
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-  await fs.mkdir(uploadDir, { recursive: true });
-  const extension = file.name.split('.').pop() || 'jpg';
-  const fileName = `${randomUUID()}.${extension}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(path.join(uploadDir, fileName), buffer);
-
-  return NextResponse.json({ path: `/uploads/${fileName}` }, { status: 201 });
+  return NextResponse.json({ path: upload.path }, { status: 201 });
 }

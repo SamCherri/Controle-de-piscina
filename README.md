@@ -1,90 +1,92 @@
 # Controle de Piscina para Condomínios
 
-Sistema web completo, responsivo e preparado para produção para controle operacional de piscinas em condomínios, com:
-
-- área administrativa com autenticação;
-- cadastro multi-condomínio e multi-piscina;
-- lançamento de medições com foto, produtos aplicados e observações;
-- classificação automática por faixas ideais configuráveis;
-- gráficos e histórico completo por piscina;
-- área pública pronta para QR Code;
-- experiência PWA instalável no Android via navegador.
+Sistema web completo para operação de piscinas em condomínios, consolidado a partir das iterações recentes do projeto sem perder funcionalidades já entregues. A versão atual preserva autenticação, dashboard, cadastro de condomínio e piscina, medições com foto, QR Code, página pública, PWA, gráficos, Prisma com PostgreSQL, migrations versionadas, proteção de rotas e validações reforçadas para deploy compatível com Railway.
 
 ## Stack adotada
 
-- **Frontend + backend:** Next.js 14 com App Router.
-- **UI:** React + Tailwind CSS.
-- **Banco relacional:** Prisma ORM com SQLite por padrão para desenvolvimento local.
-- **Autenticação:** sessão segura baseada em cookie HTTP-only assinado com `jose`.
-- **Uploads:** armazenamento local em `public/uploads`.
+- **Frontend + backend:** Next.js `14.2.35` com App Router.
+- **UI:** React 18 + Tailwind CSS.
+- **Banco relacional:** Prisma ORM com PostgreSQL.
+- **Autenticação:** cookie HTTP-only assinado com JWT (`jose`).
+- **Criptografia de senha:** `bcryptjs`, isolado em utilitário dedicado.
+- **Uploads:** persistência local em `public/uploads` com utilitário dedicado, validação de tipo, extensão e tamanho.
 - **QR Code:** geração dinâmica com `qrcode`.
 - **Gráficos:** `recharts`.
-- **Validação:** `zod`.
+- **Validação:** `zod` com normalização e refinamentos adicionais.
+- **PWA:** `manifest.webmanifest`, ícones e service worker com cache versionado e exclusão explícita de APIs.
 
-> Em produção, basta trocar `DATABASE_URL` para um banco suportado pelo Prisma e apontar `NEXT_PUBLIC_APP_URL` para o domínio oficial.
-
-## Funcionalidades entregues
+## Funcionalidades preservadas
 
 ### Área administrativa
 
 - Login seguro.
+- Proteção de rotas do dashboard.
+- Dashboard com visão consolidada por condomínio e piscina.
 - Cadastro de condomínio.
 - Cadastro de piscina.
-- Configuração de limites ideais por piscina para:
-  - cloro;
-  - pH;
-  - alcalinidade;
-  - dureza cálcica;
-  - temperatura.
-- Registro de medição com:
-  - data e hora;
-  - responsável;
-  - cloro;
-  - pH;
-  - alcalinidade;
-  - dureza cálcica;
-  - temperatura;
-  - produtos aplicados;
-  - observações;
-  - foto.
-- Edição e exclusão de registros.
-- Histórico completo por piscina.
-- Dashboard com status atual.
+- Configuração de faixas ideais por piscina.
+- Registro, edição e exclusão de medições.
+- Upload de foto em medições.
 - Gráficos de acompanhamento.
+- Histórico operacional completo.
 - Geração de QR Code por piscina.
 
-### Área pública por QR Code
+### Área pública
 
-- Nome do condomínio.
-- Identificação da piscina.
-- Foto mais recente.
-- Data e hora da última atualização.
-- Nome do responsável.
-- Cloro atual.
-- pH atual.
-- Alcalinidade atual.
-- Dureza cálcica atual.
-- Temperatura atual.
-- Produtos aplicados.
-- Observações.
-- Status visual geral.
-- Mensagem automática: normal, atenção ou crítico.
+- Página pública por `slug` da piscina.
+- Exibição da medição mais recente.
+- Exibição de foto, parâmetros, observações e status geral.
+- Compatibilidade com QR Code impresso/afixado no condomínio.
 
-## Regras de classificação
+## Consolidação técnica aplicada
 
-Cada piscina possui faixas ideais configuráveis.
+### Banco de dados e deploy
 
-Regra implementada:
-- **Normal:** valor dentro do intervalo ideal.
-- **Atenção:** valor levemente fora do intervalo ideal, dentro de tolerância de 15% da faixa.
-- **Crítico:** valor fora da tolerância.
+- Prisma em **PostgreSQL**.
+- Migration inicial versionada em `prisma/migrations/20260318120000_init/migration.sql`.
+- `migration_lock.toml` configurado para PostgreSQL.
+- `.env.example` pronto para ambiente local/ Railway.
+- Fluxo de deploy documentado para Railway com `prisma migrate deploy`.
 
-O status geral da piscina é calculado assim:
-- se qualquer parâmetro for **crítico**, o status geral é **crítico**;
-- senão, se qualquer parâmetro estiver em **atenção**, o status geral é **atenção**;
-- caso contrário, é **normal**.
+### Autenticação e proteção
 
-## Estrutura do projeto
+A autenticação foi consolidada em três camadas para evitar mistura de responsabilidades:
+
+- `lib/password.ts`: hash e verificação de senha.
+- `lib/session.ts`: assinatura, leitura e limpeza da sessão JWT em cookie.
+- `lib/auth.ts`: autenticação do usuário e proteção de rotas/pontos de API.
+
+Proteções preservadas:
+
+- cookie `HTTP-only`;
+- `sameSite=lax`;
+- `secure` em produção;
+- proteção de páginas administrativas;
+- proteção explícita de APIs sensíveis (`/api/measurements`, `/api/uploads`, `/api/auth/logout`);
+- sem enumeração de usuário no login.
+
+### Upload endurecido
+
+O upload usa `lib/uploads.ts` para centralizar:
+
+- limite de **5 MB**;
+- formatos permitidos **JPG, PNG e WEBP**;
+- validação simultânea de MIME type e extensão;
+- nome de arquivo aleatório com `UUID`;
+- persistência controlada em `public/uploads`.
+
+### PWA e service worker
+
+A versão consolidada do service worker:
+
+- usa cache versionado;
+- remove caches antigos automaticamente;
+- não intercepta nem armazena respostas de `/api`;
+- faz cache apenas de assets estáticos e rotas públicas apropriadas;
+- não armazena HTML do dashboard autenticado;
+- aplica fallback de navegação sem afetar dados administrativos.
+
+## Estrutura principal
 
 ```bash
 app/
@@ -95,7 +97,14 @@ app/
 components/
   forms/
 lib/
+  auth.ts
+  password.ts
+  session.ts
+  status.ts
+  uploads.ts
+  validators.ts
 prisma/
+  migrations/
 public/
   icons/
   uploads/
@@ -106,23 +115,24 @@ public/
 Copie `.env.example` para `.env`.
 
 ```env
-DATABASE_URL="file:./prisma/dev.db"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/controle_de_piscina?schema=public"
 AUTH_SECRET="change-this-secret-in-production"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
 ### Descrição
 
-- `DATABASE_URL`: conexão do banco de dados.
-- `AUTH_SECRET`: segredo usado para assinar sessões.
-- `NEXT_PUBLIC_APP_URL`: URL pública usada na geração dos QR Codes.
+- `DATABASE_URL`: conexão PostgreSQL usada pelo Prisma.
+- `AUTH_SECRET`: segredo usado para assinar a sessão JWT.
+- `NEXT_PUBLIC_APP_URL`: base pública usada na geração dos QR Codes.
 
-## Instalação
+## Instalação local
 
 ```bash
 npm install
 cp .env.example .env
-npx prisma migrate dev --name init
+npm run prisma:generate
+npm run prisma:migrate:deploy
 npm run prisma:seed
 npm run dev
 ```
@@ -149,66 +159,32 @@ O seed cria:
 - 3 medições com status diferentes;
 - imagem pública inicial demo.
 
-## Fluxos principais
-
-### 1. Cadastro operacional
-
-1. Entrar na área administrativa.
-2. Cadastrar o condomínio.
-3. Cadastrar a piscina.
-4. Definir faixas ideais.
-5. Registrar medições periódicas.
-6. Acompanhar o histórico, gráficos e status.
-
-### 2. Consulta pública por QR Code
-
-1. Abrir a tela da piscina no painel administrativo.
-2. Exibir ou imprimir o QR Code.
-3. Moradores e administradora acessam a página pública da piscina.
-
-## PWA
-
-A aplicação inclui:
-
-- `manifest.webmanifest`;
-- ícones do app;
-- `service worker` simples para cache do shell inicial;
-- layout mobile-first e instalável no Android via navegador compatível.
-
 ## API
 
 ### `POST /api/auth/login`
-Login administrativo via JSON.
+Login administrativo via JSON, com resposta genérica para credenciais inválidas.
 
 ### `POST /api/auth/logout`
-Logout administrativo.
+Logout administrativo com sessão válida.
 
 ### `GET /api/measurements?poolId=...`
-Lista medições de uma piscina.
+Lista medições de uma piscina para sessão autenticada.
 
 ### `POST /api/measurements`
-Cria medição via JSON.
+Cria medição via JSON para sessão autenticada.
 
 ### `POST /api/uploads`
-Upload de arquivo e retorno do caminho público.
+Upload de imagem validado e protegido por sessão, com retorno do caminho público.
 
-## Produção
+## Deploy no Railway
 
-Checklist recomendado:
+Fluxo recomendado:
 
-1. Configurar `AUTH_SECRET` forte.
-2. Configurar `NEXT_PUBLIC_APP_URL` com domínio HTTPS.
-3. Migrar `DATABASE_URL` para PostgreSQL ou MySQL suportado pelo Prisma.
-4. Configurar storage externo para uploads, se desejar escalar.
-5. Executar `npm run build` e `npm run start`.
-6. Publicar atrás de proxy HTTPS.
-
-## Observações de engenharia
-
-- O upload local foi adotado por praticidade e baixa complexidade na primeira versão.
-- A modelagem já suporta vários condomínios e várias piscinas por condomínio.
-- O histórico preserva data/hora, responsável e timestamps de criação/atualização.
-- A tela pública sempre exibe a medição mais recente disponível.
+1. Provisionar um banco PostgreSQL no Railway.
+2. Configurar `DATABASE_URL`, `AUTH_SECRET` e `NEXT_PUBLIC_APP_URL`.
+3. Executar `npm run prisma:migrate:deploy`.
+4. Executar `npm run build`.
+5. Publicar a aplicação com `npm run start`.
 
 ## Comandos úteis
 
@@ -216,5 +192,7 @@ Checklist recomendado:
 npm run dev
 npm run build
 npm run lint
+npm run prisma:generate
+npm run prisma:migrate:deploy
 npm run prisma:seed
 ```

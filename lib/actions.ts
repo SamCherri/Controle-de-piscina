@@ -2,16 +2,17 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { authenticateUser, requireSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { createSession, verifyPassword } from '@/lib/auth';
-import { condominiumSchema, loginSchema, measurementSchema, poolSchema } from '@/lib/validators';
-import { slugify } from '@/lib/utils';
+import { createSession } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
+import { persistImageUpload } from '@/lib/uploads';
+import { slugify } from '@/lib/utils';
+import { condominiumSchema, loginSchema, measurementSchema, poolSchema } from '@/lib/validators';
 
 export type ActionState = { success?: string; error?: string };
+
+const INVALID_LOGIN_ERROR = 'E-mail ou senha inválidos.';
 
 export async function loginAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
@@ -19,19 +20,22 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
     return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
   }
 
-  const user = await prisma.adminUser.findUnique({ where: { email: parsed.data.email } });
-  if (!user) return { error: 'Usuário não encontrado.' };
-
-  const valid = await verifyPassword(parsed.data.password, user.passwordHash);
-  if (!valid) return { error: 'Senha inválida.' };
+  const user = await authenticateUser(parsed.data.email, parsed.data.password);
+  if (!user) {
+    return { error: INVALID_LOGIN_ERROR };
+  }
 
   await createSession(user.id, user.email, user.name);
   redirect('/');
 }
 
 export async function createCondominiumAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
   const parsed = condominiumSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: 'Revise os dados do condomínio.' };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Revise os dados do condomínio.' };
+  }
 
   const slugBase = slugify(parsed.data.name);
   let slug = slugBase;
@@ -46,8 +50,12 @@ export async function createCondominiumAction(_: ActionState, formData: FormData
 }
 
 export async function createPoolAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
   const parsed = poolSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: 'Revise os dados da piscina.' };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Revise os dados da piscina.' };
+  }
 
   const slugBase = slugify(`${parsed.data.name}-${Date.now()}`);
   await prisma.pool.create({
@@ -61,18 +69,9 @@ export async function createPoolAction(_: ActionState, formData: FormData): Prom
   redirect(`/condominios/${parsed.data.condominiumId}`);
 }
 
-async function persistUpload(file: File | null) {
-  if (!file || file.size === 0) return undefined;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const extension = file.name.split('.').pop() || 'jpg';
-  const fileName = `${randomUUID()}.${extension}`;
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-  await fs.mkdir(uploadDir, { recursive: true });
-  await fs.writeFile(path.join(uploadDir, fileName), buffer);
-  return `/uploads/${fileName}`;
-}
-
 export async function saveMeasurementAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
   const raw = Object.fromEntries(formData.entries());
   const photo = formData.get('photo') as File | null;
   const parsed = measurementSchema.safeParse({ ...raw, photoPath: raw.photoPath || undefined });
@@ -84,7 +83,12 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
   const pool = await prisma.pool.findUnique({ where: { id: parsed.data.poolId } });
   if (!pool) return { error: 'Piscina não encontrada.' };
 
-  const photoPath = (await persistUpload(photo)) || parsed.data.photoPath;
+  const upload = await persistImageUpload(photo);
+  if (!upload.ok) {
+    return { error: upload.error };
+  }
+
+  const photoPath = upload.path || parsed.data.photoPath;
   const statuses = computeMeasurementStatuses(pool, parsed.data);
 
   if (parsed.data.id) {
@@ -115,6 +119,8 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
 }
 
 export async function deleteMeasurementAction(formData: FormData) {
+  await requireSession();
+
   const measurementId = String(formData.get('measurementId'));
   const poolId = String(formData.get('poolId'));
   const condominiumId = String(formData.get('condominiumId'));
