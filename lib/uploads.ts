@@ -62,9 +62,14 @@ export async function persistImageUpload(file: File | null) {
     return inspectedImage;
   }
 
+  const { extension, mimeType } = validation;
+  if (!extension || !mimeType) {
+    return { ok: false as const, error: 'Falha ao validar o arquivo enviado.' };
+  }
+
   const detectedFormat = inspectedImage.metadata.format === 'jpeg' ? 'jpg' : inspectedImage.metadata.format;
-  const normalizedExtension = validation.extension === 'jpeg' ? 'jpg' : validation.extension;
-  const normalizedMimeType = validation.mimeType === 'image/jpeg' ? 'jpg' : validation.mimeType.replace('image/', '');
+  const normalizedExtension = extension === 'jpeg' ? 'jpg' : extension;
+  const normalizedMimeType = mimeType === 'image/jpeg' ? 'jpg' : mimeType.replace('image/', '');
 
   if (detectedFormat !== normalizedExtension || detectedFormat !== normalizedMimeType) {
     return { ok: false as const, error: 'O conteúdo da imagem não corresponde ao tipo do arquivo enviado.' };
