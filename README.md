@@ -82,7 +82,8 @@ A versão consolidada do service worker:
 - usa cache versionado;
 - remove caches antigos automaticamente;
 - não intercepta nem armazena respostas de `/api`;
-- faz cache de app shell e assets estáticos;
+- faz cache apenas de assets estáticos e rotas públicas apropriadas;
+- não armazena HTML do dashboard autenticado;
 - aplica fallback de navegação sem afetar dados administrativos.
 
 ## Estrutura principal

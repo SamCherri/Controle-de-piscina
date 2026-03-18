@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import sharp from 'sharp';
 
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_UPLOAD_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -25,7 +26,24 @@ export function validateImageUpload(file: File | null) {
     return { ok: false as const, error: 'A extensão do arquivo deve ser JPG, PNG ou WEBP.' };
   }
 
-  return { ok: true as const, extension };
+  return { ok: true as const, extension, mimeType };
+}
+
+async function inspectImageBuffer(buffer: Buffer) {
+  try {
+    const metadata = await sharp(buffer, { failOn: 'error' }).metadata();
+    if (!metadata.format || !metadata.width || !metadata.height) {
+      return { ok: false as const, error: 'Arquivo de imagem inválido ou corrompido.' };
+    }
+
+    if (!['jpeg', 'png', 'webp'].includes(metadata.format)) {
+      return { ok: false as const, error: 'Formato de imagem não suportado.' };
+    }
+
+    return { ok: true as const, metadata };
+  } catch {
+    return { ok: false as const, error: 'Arquivo de imagem inválido ou corrompido.' };
+  }
 }
 
 export async function persistImageUpload(file: File | null) {
@@ -38,13 +56,25 @@ export async function persistImageUpload(file: File | null) {
     return { ok: true as const, path: undefined };
   }
 
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const inspectedImage = await inspectImageBuffer(buffer);
+  if (!inspectedImage.ok) {
+    return inspectedImage;
+  }
+
+  const detectedFormat = inspectedImage.metadata.format === 'jpeg' ? 'jpg' : inspectedImage.metadata.format;
+  const normalizedExtension = validation.extension === 'jpeg' ? 'jpg' : validation.extension;
+  const normalizedMimeType = validation.mimeType === 'image/jpeg' ? 'jpg' : validation.mimeType.replace('image/', '');
+
+  if (detectedFormat !== normalizedExtension || detectedFormat !== normalizedMimeType) {
+    return { ok: false as const, error: 'O conteúdo da imagem não corresponde ao tipo do arquivo enviado.' };
+  }
+
   const uploadDir = path.join(process.cwd(), 'public', 'uploads');
   await fs.mkdir(uploadDir, { recursive: true });
 
-  const fileName = `${randomUUID()}.${validation.extension}`;
+  const fileName = `${randomUUID()}.${detectedFormat}`;
   const filePath = path.join(uploadDir, fileName);
-  const buffer = Buffer.from(await file.arrayBuffer());
-
   await fs.writeFile(filePath, buffer);
 
   return { ok: true as const, path: `/uploads/${fileName}` };

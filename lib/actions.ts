@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { authenticateUser } from '@/lib/auth';
+import { authenticateUser, requireSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createSession } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
@@ -30,6 +30,8 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
 }
 
 export async function createCondominiumAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
   const parsed = condominiumSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Revise os dados do condomínio.' };
@@ -48,6 +50,8 @@ export async function createCondominiumAction(_: ActionState, formData: FormData
 }
 
 export async function createPoolAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
   const parsed = poolSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Revise os dados da piscina.' };
@@ -66,6 +70,8 @@ export async function createPoolAction(_: ActionState, formData: FormData): Prom
 }
 
 export async function saveMeasurementAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
   const raw = Object.fromEntries(formData.entries());
   const photo = formData.get('photo') as File | null;
   const parsed = measurementSchema.safeParse({ ...raw, photoPath: raw.photoPath || undefined });
@@ -113,6 +119,8 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
 }
 
 export async function deleteMeasurementAction(formData: FormData) {
+  await requireSession();
+
   const measurementId = String(formData.get('measurementId'));
   const poolId = String(formData.get('poolId'));
   const condominiumId = String(formData.get('condominiumId'));

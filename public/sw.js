@@ -1,20 +1,23 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `controle-de-piscina-${CACHE_VERSION}`;
-const APP_SHELL = ['/', '/login', '/manifest.webmanifest', '/icons/icon-192.svg', '/icons/icon-512.svg'];
-const IMMUTABLE_PATH_PREFIXES = ['/icons/', '/_next/static/'];
+const STATIC_ASSET_PREFIXES = ['/icons/', '/_next/static/'];
+const STATIC_ASSET_PATHS = new Set(['/manifest.webmanifest', '/sw.js']);
+const PUBLIC_PAGE_PREFIXES = ['/public/'];
+const PUBLIC_PAGE_PATHS = new Set(['/login']);
 
-function shouldCacheRequest(requestUrl, request) {
-  if (request.method !== 'GET') return false;
-  if (requestUrl.origin !== self.location.origin) return false;
-  if (requestUrl.pathname.startsWith('/api/')) return false;
-  return true;
+function isCacheableStaticAsset(pathname) {
+  return STATIC_ASSET_PATHS.has(pathname) || STATIC_ASSET_PREFIXES.some(prefix => pathname.startsWith(prefix));
+}
+
+function isCacheablePublicPage(pathname) {
+  return PUBLIC_PAGE_PATHS.has(pathname) || PUBLIC_PAGE_PREFIXES.some(prefix => pathname.startsWith(prefix));
 }
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
+      .then(cache => cache.addAll(['/login', '/manifest.webmanifest', '/icons/icon-192.svg', '/icons/icon-512.svg']))
       .then(() => self.skipWaiting())
   );
 });
@@ -29,16 +32,25 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+
   const requestUrl = new URL(event.request.url);
-  if (!shouldCacheRequest(requestUrl, event.request)) return;
+  if (requestUrl.origin !== self.location.origin) return;
+  if (requestUrl.pathname.startsWith('/api/')) return;
 
   const isNavigationRequest = event.request.mode === 'navigate';
-  const isImmutableAsset = IMMUTABLE_PATH_PREFIXES.some(prefix => requestUrl.pathname.startsWith(prefix));
+  const cacheStaticAsset = isCacheableStaticAsset(requestUrl.pathname);
+  const cachePublicPage = isNavigationRequest && isCacheablePublicPage(requestUrl.pathname);
 
-  if (isImmutableAsset) {
+  if (!cacheStaticAsset && !cachePublicPage) {
+    return;
+  }
+
+  if (cacheStaticAsset) {
     event.respondWith(
       caches.match(event.request).then(cached => {
         if (cached) return cached;
+
         return fetch(event.request).then(response => {
           if (response.ok) {
             const clonedResponse = response.clone();
@@ -66,11 +78,7 @@ self.addEventListener('fetch', event => {
           return cached;
         }
 
-        if (isNavigationRequest) {
-          return (await caches.match('/login')) || (await caches.match('/')) || Response.error();
-        }
-
-        return Response.error();
+        return (await caches.match('/login')) || Response.error();
       })
   );
 });
