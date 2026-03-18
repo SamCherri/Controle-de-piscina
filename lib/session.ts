@@ -25,19 +25,17 @@ function getAuthSecret() {
   return new TextEncoder().encode('dev-secret-not-for-production');
 }
 
-const secret = getAuthSecret();
-
 async function signSessionToken(payload: SessionPayload) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(secret);
+    .sign(getAuthSecret());
 }
 
 async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
-    const result = await jwtVerify(token, secret);
+    const result = await jwtVerify(token, getAuthSecret());
     return result.payload as SessionPayload;
   } catch {
     return null;
