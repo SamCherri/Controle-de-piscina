@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+input,
+textarea,
+select {
+  @apply rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+}
+
+label {
+  @apply text-sm font-medium text-slate-700;
+}
+
+button {
+  @apply transition;
+}
+
+.card {
+  @apply rounded-3xl bg-white p-6 shadow-soft;
+}
+
+.metric-grid {
+  @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-5;
+}

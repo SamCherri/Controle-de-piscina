@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0c78b2"/>
+      <stop offset="100%" stop-color="#06324d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <rect x="160" y="170" width="880" height="460" rx="48" fill="#d8f0ff" opacity="0.25"/>
+  <rect x="210" y="220" width="780" height="360" rx="36" fill="#7dd3fc"/>
+  <path d="M240 410c65-30 130-30 195 0s130 30 195 0 130-30 195 0 130 30 195 0" fill="none" stroke="#eff9ff" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="1040" cy="120" r="56" fill="#fde68a"/>
+  <text x="160" y="120" fill="#eff9ff" font-size="52" font-family="Arial, sans-serif" font-weight="700">Piscina do condomínio</text>
+</svg>
