@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PoolStatus {
+  NORMAL
+  ATTENTION
+  CRITICAL
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Condominium {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  address      String?
+  contactName  String?
+  contactPhone String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  pools        Pool[]
+}
+
+model Pool {
+  id                  String        @id @default(cuid())
+  condominiumId       String
+  name                String
+  slug                String        @unique
+  description         String?
+  locationNote        String?
+  idealChlorineMin    Float         @default(1)
+  idealChlorineMax    Float         @default(3)
+  idealPhMin          Float         @default(7.2)
+  idealPhMax          Float         @default(7.8)
+  idealAlkalinityMin  Float         @default(80)
+  idealAlkalinityMax  Float         @default(120)
+  idealHardnessMin    Float         @default(200)
+  idealHardnessMax    Float         @default(400)
+  idealTemperatureMin Float         @default(24)
+  idealTemperatureMax Float         @default(30)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  condominium         Condominium   @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  measurements        Measurement[]
+
+  @@index([condominiumId])
+}
+
+model Measurement {
+  id                String      @id @default(cuid())
+  poolId            String
+  measuredAt        DateTime
+  responsibleName   String
+  chlorine          Float
+  ph                Float
+  alkalinity        Float
+  hardness          Float
+  temperature       Float
+  productsApplied   String
+  observations      String?
+  photoPath         String?
+  chlorineStatus    PoolStatus
+  phStatus          PoolStatus
+  alkalinityStatus  PoolStatus
+  hardnessStatus    PoolStatus
+  temperatureStatus PoolStatus
+  overallStatus     PoolStatus
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  pool              Pool        @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@index([poolId, measuredAt(sort: Desc)])
+}
