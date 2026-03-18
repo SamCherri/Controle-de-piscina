@@ -47,7 +47,7 @@ Sistema web completo para operação de piscinas em condomínios, consolidado a 
 - Migration inicial versionada em `prisma/migrations/20260318120000_init/migration.sql`.
 - `migration_lock.toml` configurado para PostgreSQL.
 - `prisma.config.ts` consolidado para schema, migrations e seed sem depender da configuração legada em `package.json`.
-- `package.json` com seed nativo do Prisma (`prisma db seed`) e script dedicado para build no Railway com `prisma migrate deploy`.
+- `package.json` apenas com scripts (`prisma:seed`, `build:railway` etc.), sem bloco legado duplicado de configuração Prisma.
 - `.env.example` pronto para ambiente local/ Railway.
 - Fluxo de deploy documentado para Railway com `prisma migrate deploy`.
 
@@ -155,11 +155,13 @@ Criadas pelo seed:
 
 ## Seed inicial
 
-O projeto está configurado com o seed nativo do Prisma:
+O projeto está configurado com o seed centralizado em `prisma.config.ts`:
 
 ```bash
 prisma db seed
 ```
+
+Esse comando lê `schema`, `migrations`, `seed` e `datasource url` diretamente de `prisma.config.ts`, sem depender de bloco legado no `package.json`.
 
 ou via script:
 
@@ -204,13 +206,13 @@ Fluxo recomendado para evitar o erro `The table public.AdminUser does not exist 
 
 ### Por que isso resolve o problema de tabela ausente?
 
-O erro em produção acontecia quando a aplicação subia antes de aplicar as migrations versionadas. O script `npm run build:railway` executa, nesta ordem:
+O erro em produção acontecia porque a migration não era aplicada antes da aplicação subir. O script `npm run build:railway` executa, nesta ordem:
 
 1. `prisma migrate deploy`
 2. `prisma generate`
 3. `next build`
 
-Assim, a tabela `AdminUser` e as demais estruturas do schema passam a existir antes do build e do start da aplicação, mantendo o fluxo compatível com PostgreSQL no Railway.
+Assim, a tabela `AdminUser` e as demais estruturas do schema passam a existir antes do build e do start da aplicação, mantendo o fluxo compatível com PostgreSQL no Railway e eliminando a causa do erro `The table public.AdminUser does not exist in the current database`.
 
 ## Comandos úteis
 
