@@ -25,10 +25,6 @@ const orderedRange = (minField: string, maxField: string, label: string) =>
     }
   };
 
-export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
-export const ALLOWED_UPLOAD_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-export const ALLOWED_UPLOAD_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
-
 export const loginSchema = z.object({
   email: z.string().trim().email('Informe um e-mail válido.'),
   password: z.string().min(6, 'A senha deve ter ao menos 6 caracteres.')
@@ -80,25 +76,3 @@ export const measurementSchema = z.object({
   observations: optionalTrimmedString,
   photoPath: optionalTrimmedString
 });
-
-export function validateImageUpload(file: File | null) {
-  if (!file || file.size === 0) {
-    return { ok: true as const };
-  }
-
-  if (file.size > MAX_UPLOAD_SIZE_BYTES) {
-    return { ok: false as const, error: 'A imagem deve ter no máximo 5 MB.' };
-  }
-
-  const mimeType = file.type.toLowerCase();
-  if (!ALLOWED_UPLOAD_MIME_TYPES.includes(mimeType as (typeof ALLOWED_UPLOAD_MIME_TYPES)[number])) {
-    return { ok: false as const, error: 'Envie uma imagem JPG, PNG ou WEBP.' };
-  }
-
-  const extension = file.name.split('.').pop()?.toLowerCase();
-  if (!extension || !ALLOWED_UPLOAD_EXTENSIONS.includes(extension as (typeof ALLOWED_UPLOAD_EXTENSIONS)[number])) {
-    return { ok: false as const, error: 'A extensão do arquivo deve ser JPG, PNG ou WEBP.' };
-  }
-
-  return { ok: true as const, extension };
-}

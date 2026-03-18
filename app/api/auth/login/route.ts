@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticateUser, createSession } from '@/lib/auth';
+import { authenticateUser } from '@/lib/auth';
+import { createSession } from '@/lib/session';
 import { loginSchema } from '@/lib/validators';
 
 const INVALID_LOGIN_ERROR = 'E-mail ou senha inválidos.';

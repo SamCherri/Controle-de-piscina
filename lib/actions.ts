@@ -1,21 +1,14 @@
 'use server';
 
-import { randomUUID } from 'node:crypto';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { authenticateUser, createSession } from '@/lib/auth';
+import { authenticateUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { createSession } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
+import { persistImageUpload } from '@/lib/uploads';
 import { slugify } from '@/lib/utils';
-import {
-  condominiumSchema,
-  loginSchema,
-  measurementSchema,
-  poolSchema,
-  validateImageUpload
-} from '@/lib/validators';
+import { condominiumSchema, loginSchema, measurementSchema, poolSchema } from '@/lib/validators';
 
 export type ActionState = { success?: string; error?: string };
 
@@ -72,24 +65,6 @@ export async function createPoolAction(_: ActionState, formData: FormData): Prom
   redirect(`/condominios/${parsed.data.condominiumId}`);
 }
 
-async function persistUpload(file: File | null) {
-  const validation = validateImageUpload(file);
-  if (!validation.ok) {
-    return validation;
-  }
-
-  if (!file || file.size === 0) {
-    return { ok: true as const, path: undefined };
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const fileName = `${randomUUID()}.${validation.extension}`;
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-  await fs.mkdir(uploadDir, { recursive: true });
-  await fs.writeFile(path.join(uploadDir, fileName), buffer);
-  return { ok: true as const, path: `/uploads/${fileName}` };
-}
-
 export async function saveMeasurementAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const raw = Object.fromEntries(formData.entries());
   const photo = formData.get('photo') as File | null;
@@ -102,7 +77,7 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
   const pool = await prisma.pool.findUnique({ where: { id: parsed.data.poolId } });
   if (!pool) return { error: 'Piscina não encontrada.' };
 
-  const upload = await persistUpload(photo);
+  const upload = await persistImageUpload(photo);
   if (!upload.ok) {
     return { error: upload.error };
   }

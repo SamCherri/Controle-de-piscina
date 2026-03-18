@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { clearSession, requireApiSession, unauthorizedJsonResponse } from '@/lib/auth';
+import { requireApiSession } from '@/lib/auth';
+import { clearSession, unauthorizedJsonResponse } from '@/lib/session';
 
 export async function POST() {
   const user = await requireApiSession();

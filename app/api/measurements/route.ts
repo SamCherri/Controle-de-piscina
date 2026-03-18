@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireApiSession, unauthorizedJsonResponse } from '@/lib/auth';
+import { requireApiSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { unauthorizedJsonResponse } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
 import { measurementSchema } from '@/lib/validators';
 
