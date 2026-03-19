@@ -18,7 +18,7 @@ export default function LoginPage() {
           <div className="mx-auto max-w-md">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand-600">Acesso administrativo</p>
             <h2 className="mt-3 text-3xl font-semibold text-slate-900">Entrar na plataforma</h2>
-            <p className="mt-3 text-sm text-slate-500">Use o usuário criado no seed inicial para gerenciar condomínios, piscinas, medições, gráficos e página pública.</p>
+            <p className="mt-3 text-sm text-slate-500">No primeiro start da aplicação, o administrador padrão é criado automaticamente caso ainda não exista, sem depender da execução manual do seed.</p>
             <LoginForm />
           </div>
         </section>
