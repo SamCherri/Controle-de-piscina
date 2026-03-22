@@ -44,7 +44,8 @@ export function MeasurementForm({ poolId, defaults }: MeasurementFormProps) {
         </div>
         <div className="space-y-2">
           <label htmlFor="photo">Foto da piscina</label>
-          <input id="photo" name="photo" type="file" accept="image/*" />
+          <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" />
+          <p className="text-xs text-slate-500">No celular, o sistema prioriza a câmera traseira. A foto é enviada para o servidor para aparecer no QR code e na página pública em outros aparelhos.</p>
         </div>
         {[
           ['chlorine', 'Cloro', defaults?.chlorine ?? 1.5],
