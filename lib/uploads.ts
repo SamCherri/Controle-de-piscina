@@ -1,6 +1,3 @@
-import { randomUUID } from 'node:crypto';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import sharp from 'sharp';
 
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
@@ -46,14 +43,20 @@ async function inspectImageBuffer(buffer: Buffer) {
   }
 }
 
-export async function persistImageUpload(file: File | null) {
+export function normalizeLegacyPhotoPath(photoPath?: string | null) {
+  if (!photoPath) return undefined;
+  if (/^https?:\/\//i.test(photoPath) || photoPath.startsWith('data:')) return photoPath;
+  return photoPath.startsWith('/') ? photoPath : `/${photoPath}`;
+}
+
+export async function prepareImageUpload(file: File | null) {
   const validation = validateImageUpload(file);
   if (!validation.ok) {
     return validation;
   }
 
   if (!file || file.size === 0) {
-    return { ok: true as const, path: undefined };
+    return { ok: true as const, fileName: undefined, mimeType: undefined, buffer: undefined };
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -75,12 +78,18 @@ export async function persistImageUpload(file: File | null) {
     return { ok: false as const, error: 'O conteúdo da imagem não corresponde ao tipo do arquivo enviado.' };
   }
 
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-  await fs.mkdir(uploadDir, { recursive: true });
+  return {
+    ok: true as const,
+    fileName: file.name,
+    mimeType,
+    buffer
+  };
+}
 
-  const fileName = `${randomUUID()}.${detectedFormat}`;
-  const filePath = path.join(uploadDir, fileName);
-  await fs.writeFile(filePath, buffer);
+export function getMeasurementPhotoSrc(measurement: { id: string; photoData?: Uint8Array | Buffer | null; photoPath?: string | null }) {
+  if (measurement.photoData && measurement.photoData.length > 0) {
+    return `/api/measurements/${measurement.id}/photo`;
+  }
 
-  return { ok: true as const, path: `/uploads/${fileName}` };
+  return normalizeLegacyPhotoPath(measurement.photoPath);
 }

@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import { MetricCard } from '@/components/metric-card';
 import { StatusBadge } from '@/components/status-badge';
 import { statusMeta } from '@/lib/status';
+import { getMeasurementPhotoSrc } from '@/lib/uploads';
 
 export default async function PublicPoolPage({ params }: { params: { slug: string } }) {
   const pool = await prisma.pool.findUnique({
@@ -22,6 +23,8 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
   if (!pool) notFound();
   const latest = pool.measurements[0];
   if (!latest) notFound();
+
+  const latestPhotoSrc = getMeasurementPhotoSrc(latest);
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50">
@@ -45,8 +48,8 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
               </div>
             </div>
             <div>
-              {latest.photoPath ? (
-                <Image src={latest.photoPath} alt={pool.name} width={1000} height={700} className="h-full min-h-[280px] w-full rounded-[28px] object-cover" />
+              {latestPhotoSrc ? (
+                <Image src={latestPhotoSrc} alt={pool.name} width={1000} height={700} className="h-full min-h-[280px] w-full rounded-[28px] object-cover" />
               ) : (
                 <div className="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-white/10 text-sm text-brand-50/70">Sem foto recente disponível.</div>
               )}

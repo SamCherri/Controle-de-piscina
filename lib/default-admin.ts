@@ -1,3 +1,4 @@
+import 'server-only';
 import { prisma } from '@/lib/db';
 import { hashPassword } from '@/lib/password';
 import { defaultAdminCredentials } from '@/lib/default-admin-config';

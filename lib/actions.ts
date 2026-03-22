@@ -6,7 +6,7 @@ import { authenticateUser, requireSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createSession } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
-import { persistImageUpload } from '@/lib/uploads';
+import { prepareImageUpload } from '@/lib/uploads';
 import { slugify } from '@/lib/utils';
 import { condominiumSchema, loginSchema, measurementSchema, poolSchema } from '@/lib/validators';
 
@@ -83,12 +83,15 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
   const pool = await prisma.pool.findUnique({ where: { id: parsed.data.poolId } });
   if (!pool) return { error: 'Piscina não encontrada.' };
 
-  const upload = await persistImageUpload(photo);
+  const upload = await prepareImageUpload(photo);
   if (!upload.ok) {
     return { error: upload.error };
   }
 
-  const photoPath = upload.path || parsed.data.photoPath;
+  const hasNewPhoto = Boolean(upload.buffer && upload.mimeType);
+  const photoPath = hasNewPhoto ? null : parsed.data.photoPath;
+  const photoData = hasNewPhoto ? upload.buffer : undefined;
+  const photoMimeType = hasNewPhoto ? upload.mimeType : undefined;
   const statuses = computeMeasurementStatuses(pool, parsed.data);
 
   if (parsed.data.id) {
@@ -98,6 +101,7 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
         ...parsed.data,
         measuredAt: new Date(parsed.data.measuredAt),
         photoPath,
+        ...(hasNewPhoto ? { photoData, photoMimeType } : {}),
         ...statuses
       }
     });
@@ -107,6 +111,7 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
         ...parsed.data,
         measuredAt: new Date(parsed.data.measuredAt),
         photoPath,
+        ...(hasNewPhoto ? { photoData, photoMimeType } : {}),
         ...statuses
       }
     });

@@ -73,6 +73,8 @@ model Measurement {
   productsApplied   String
   observations      String?
   photoPath         String?
+  photoData         Bytes?
+  photoMimeType     String?
   chlorineStatus    PoolStatus
   phStatus          PoolStatus
   alkalinityStatus  PoolStatus
