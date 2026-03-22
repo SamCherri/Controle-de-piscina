@@ -11,8 +11,9 @@ import { MeasurementPhoto } from '@/components/measurement-photo';
 import { MetricCard } from '@/components/metric-card';
 import { DashboardChart } from '@/components/dashboard-chart';
 import { PhotoStorageAlert } from '@/components/photo-storage-alert';
+import { PublicLinkCard } from '@/components/public-link-card';
 import { deleteMeasurementAction } from '@/lib/actions';
-import { getPublicAppUrl } from '@/lib/public-url';
+import { resolvePublicAppUrl } from '@/lib/public-url';
 import { statusMeta } from '@/lib/status';
 import { getMeasurementPhotoState } from '@/lib/uploads';
 
@@ -31,8 +32,8 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
   if (!pool || pool.condominiumId !== params.condominiumId) notFound();
 
   const latest = pool.measurements[0];
-  const publicBaseUrl = getPublicAppUrl();
-  const publicUrl = `${publicBaseUrl}/public/piscinas/${pool.slug}`;
+  const publicAppUrl = resolvePublicAppUrl();
+  const publicUrl = `${publicAppUrl.baseUrl}/public/piscinas/${pool.slug}`;
   const qrCode = await QRCode.toDataURL(publicUrl, { margin: 1, width: 280 });
   const chartData = [...pool.measurements]
     .reverse()
@@ -140,7 +141,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
             <div className="card space-y-4">
               <h3 className="text-lg font-semibold text-slate-900">QR Code da piscina</h3>
               <Image src={qrCode} alt="QR Code da página pública" width={280} height={280} className="mx-auto rounded-2xl border border-slate-200 bg-white p-3" unoptimized />
-              <p className="text-xs text-slate-500">URL pública: {publicUrl}</p>
+              <PublicLinkCard publicUrl={publicUrl} warning={publicAppUrl.warning} />
               <Link href={`/public/piscinas/${pool.slug}`} className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">Abrir tela pública</Link>
             </div>
             <div className="card space-y-3">
