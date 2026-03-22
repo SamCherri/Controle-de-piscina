@@ -10,10 +10,11 @@ import { StatusBadge } from '@/components/status-badge';
 import { MeasurementPhoto } from '@/components/measurement-photo';
 import { MetricCard } from '@/components/metric-card';
 import { DashboardChart } from '@/components/dashboard-chart';
+import { PhotoStorageAlert } from '@/components/photo-storage-alert';
 import { deleteMeasurementAction } from '@/lib/actions';
 import { getPublicAppUrl } from '@/lib/public-url';
 import { statusMeta } from '@/lib/status';
-import { getMeasurementPhotoSrc } from '@/lib/uploads';
+import { getMeasurementPhotoState } from '@/lib/uploads';
 
 export default async function PoolPage({ params }: { params: { condominiumId: string; poolId: string } }) {
   const pool = await prisma.pool.findUnique({
@@ -41,7 +42,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
       ph: item.ph,
       temperatura: item.temperature
     }));
-  const latestPhotoSrc = latest ? getMeasurementPhotoSrc(latest) : undefined;
+  const latestPhoto = latest ? getMeasurementPhotoState(latest) : { kind: 'missing' as const };
 
   return (
     <>
@@ -144,7 +145,8 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
             </div>
             <div className="card space-y-3">
               <h3 className="text-lg font-semibold text-slate-900">Foto mais recente</h3>
-              <MeasurementPhoto src={latestPhotoSrc} alt={pool.name} width={800} height={600} className="h-auto w-full rounded-2xl object-cover" fallbackClassName="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400" emptyMessage="Nenhuma foto enviada até o momento." />
+              <MeasurementPhoto src={latestPhoto.kind === 'missing' ? undefined : latestPhoto.src} alt={pool.name} width={800} height={600} className="h-auto w-full rounded-2xl object-cover" fallbackClassName="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400" emptyMessage="Nenhuma foto enviada até o momento." />
+              {latestPhoto.kind !== 'missing' && latestPhoto.warning ? <PhotoStorageAlert message={latestPhoto.warning} /> : null}
             </div>
           </aside>
         </section>

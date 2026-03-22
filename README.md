@@ -10,7 +10,7 @@ Sistema web completo para operação de piscinas em condomínios, consolidado a 
 - **Configuração Prisma:** `prisma.config.ts` apontando schema, migrations versionadas e seed.
 - **Autenticação:** cookie HTTP-only assinado com JWT (`jose`).
 - **Criptografia de senha:** `bcryptjs`, isolado em utilitário dedicado.
-- **Uploads:** persistência local em `public/uploads` com utilitário dedicado, validação de tipo, extensão e tamanho.
+- **Uploads:** persistência principal no banco PostgreSQL (`photoData`/`photoMimeType`), com compatibilidade para caminhos legados e utilitário de migração/backfill.
 - **QR Code:** geração dinâmica com `qrcode`.
 - **Gráficos:** `recharts`.
 - **Validação:** `zod` com normalização e refinamentos adicionais.
@@ -75,8 +75,9 @@ O upload usa `lib/uploads.ts` para centralizar:
 - limite de **5 MB**;
 - formatos permitidos **JPG, PNG e WEBP**;
 - validação simultânea de MIME type e extensão;
-- nome de arquivo aleatório com `UUID`;
-- persistência controlada em `public/uploads`.
+- persistência definitiva em bytes no banco para não depender do disco efêmero do Railway;
+- compatibilidade de leitura para caminhos legados (`photoPath`) enquanto houver registros antigos;
+- script de backfill para converter fotos legadas acessíveis para armazenamento no banco.
 
 ### PWA e service worker
 
@@ -201,7 +202,10 @@ Lista medições de uma piscina para sessão autenticada.
 Cria medição via JSON para sessão autenticada.
 
 ### `POST /api/uploads`
-Upload de imagem validado e protegido por sessão, com retorno do caminho público.
+Upload de imagem validado e protegido por sessão, com retorno dos metadados do arquivo; o salvamento definitivo ocorre ao concluir a medição.
+
+### `npm run photos:backfill-legacy`
+Migra fotos antigas ainda acessíveis no disco para `photoData`/`photoMimeType` no banco, eliminando dependência do filesystem efêmero do Railway. Registros cujo arquivo já sumiu precisam de reenvio manual da foto.
 
 ## Deploy no Railway
 

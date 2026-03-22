@@ -5,8 +5,9 @@ import { prisma } from '@/lib/db';
 import { MetricCard } from '@/components/metric-card';
 import { MeasurementPhoto } from '@/components/measurement-photo';
 import { StatusBadge } from '@/components/status-badge';
+import { PhotoStorageAlert } from '@/components/photo-storage-alert';
 import { statusMeta } from '@/lib/status';
-import { getMeasurementPhotoSrc } from '@/lib/uploads';
+import { getMeasurementPhotoState } from '@/lib/uploads';
 
 export default async function PublicPoolPage({ params }: { params: { slug: string } }) {
   const pool = await prisma.pool.findUnique({
@@ -24,7 +25,7 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
   const latest = pool.measurements[0];
   if (!latest) notFound();
 
-  const latestPhotoSrc = getMeasurementPhotoSrc(latest);
+  const latestPhoto = getMeasurementPhotoState(latest);
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50">
@@ -48,7 +49,10 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
               </div>
             </div>
             <div>
-              <MeasurementPhoto src={latestPhotoSrc} alt={pool.name} width={1000} height={700} className="h-full min-h-[280px] w-full rounded-[28px] object-cover" fallbackClassName="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-white/10 px-6 text-center text-sm text-brand-50/70" />
+              <div className="space-y-3">
+                <MeasurementPhoto src={latestPhoto.kind === 'missing' ? undefined : latestPhoto.src} alt={pool.name} width={1000} height={700} className="h-full min-h-[280px] w-full rounded-[28px] object-cover" fallbackClassName="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-white/10 px-6 text-center text-sm text-brand-50/70" />
+                {latestPhoto.warning ? <PhotoStorageAlert message={latestPhoto.warning} tone="info" /> : null}
+              </div>
             </div>
           </div>
         </section>
