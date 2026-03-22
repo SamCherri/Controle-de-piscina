@@ -3,18 +3,36 @@ import { resolveMeasurementPhotoDelivery } from '@/lib/measurement-photo-persist
 import { toPrismaBytes } from '@/lib/uploads';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+function buildPhotoHeaders(photoData: Uint8Array, photoMimeType: string) {
+  return {
+    'Content-Type': photoMimeType,
+    'Content-Length': String(photoData.byteLength),
+    'Content-Disposition': 'inline',
+    'Cache-Control': 'private, no-store, no-cache, max-age=0, must-revalidate, no-transform',
+    'X-Content-Type-Options': 'nosniff'
+  };
+}
 
 function buildPhotoResponse(photoData: Uint8Array, photoMimeType: string) {
   return new Response(Buffer.from(photoData), {
     status: 200,
-    headers: {
-      'Content-Type': photoMimeType,
-      'Content-Length': String(photoData.byteLength),
-      'Content-Disposition': 'inline',
-      'Cache-Control': 'public, max-age=0, must-revalidate, no-transform',
-      'X-Content-Type-Options': 'nosniff'
-    }
+    headers: buildPhotoHeaders(photoData, photoMimeType)
   });
+}
+
+function buildJsonErrorResponse(message: string, status: number) {
+  return Response.json(
+    { error: message },
+    {
+      status,
+      headers: {
+        'Cache-Control': 'private, no-store, no-cache, max-age=0, must-revalidate',
+        'X-Content-Type-Options': 'nosniff'
+      }
+    }
+  );
 }
 
 export async function GET(_request: Request, { params }: { params: { measurementId: string } }) {
@@ -24,7 +42,7 @@ export async function GET(_request: Request, { params }: { params: { measurement
   });
 
   if (!measurement) {
-    return Response.json({ error: 'Medição não encontrada.' }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    return buildJsonErrorResponse('Medição não encontrada.', 404);
   }
 
   if (measurement.photoData && measurement.photoMimeType) {
@@ -47,5 +65,5 @@ export async function GET(_request: Request, { params }: { params: { measurement
     return buildPhotoResponse(new Uint8Array(legacyPhoto.photoData), legacyPhoto.photoMimeType);
   }
 
-  return Response.json({ error: legacyPhoto.error }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+  return buildJsonErrorResponse(legacyPhoto.error, 404);
 }
