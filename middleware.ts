@@ -5,6 +5,7 @@ const PUBLIC_PATH_PREFIXES = ['/login', '/public', '/_next', '/icons', '/manifes
 const PUBLIC_EXACT_PATHS = new Set(['/sw.js']);
 const PUBLIC_API_PATHS = new Set(['/api/auth/login']);
 const PROTECTED_API_PREFIXES = ['/api/debug', '/api/measurements', '/api/uploads'];
+const PUBLIC_MEASUREMENT_PHOTO_ROUTE = /^\/api\/measurements\/[^/]+\/photo$/;
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -12,7 +13,8 @@ export function middleware(request: NextRequest) {
   if (
     PUBLIC_PATH_PREFIXES.some(prefix => pathname.startsWith(prefix)) ||
     PUBLIC_EXACT_PATHS.has(pathname) ||
-    PUBLIC_API_PATHS.has(pathname)
+    PUBLIC_API_PATHS.has(pathname) ||
+    (request.method === 'GET' && PUBLIC_MEASUREMENT_PHOTO_ROUTE.test(pathname))
   ) {
     return NextResponse.next();
   }
