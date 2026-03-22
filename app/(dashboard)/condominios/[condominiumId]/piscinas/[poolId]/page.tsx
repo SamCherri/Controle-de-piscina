@@ -14,9 +14,8 @@ import { PhotoStorageAlert } from '@/components/photo-storage-alert';
 import { PublicLinkCard } from '@/components/public-link-card';
 import { deleteMeasurementAction } from '@/lib/actions';
 import { resolvePublicAppUrl } from '@/lib/public-url';
+import { selectMeasurementPhotoForDisplay, getMeasurementPhotoRecencyMessage } from '@/lib/measurement-photo-summary';
 import { statusMeta } from '@/lib/status';
-import { getMeasurementPhotoState } from '@/lib/uploads';
-import { getMeasurementPhotoRecencyMessage } from '@/lib/measurement-photo-summary';
 
 export default async function PoolPage({ params }: { params: { condominiumId: string; poolId: string } }) {
   const pool = await prisma.pool.findUnique({
@@ -24,7 +23,10 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
     include: {
       condominium: true,
       measurements: {
-        orderBy: { measuredAt: 'desc' },
+        orderBy: [
+          { measuredAt: 'desc' },
+          { createdAt: 'desc' }
+        ],
         take: 30
       }
     }
@@ -45,29 +47,19 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
       temperatura: item.temperature
     }));
 
-  const photoMeasurement = latest
-    ? await prisma.measurement.findFirst({
-        where: {
-          poolId: pool.id,
-          OR: [
-            { photoData: { not: null } },
-            { photoPath: { not: null } }
-          ]
-        },
-        orderBy: { measuredAt: 'desc' }
-      }) ?? latest
-    : undefined;
-  const latestPhoto = photoMeasurement ? getMeasurementPhotoState(photoMeasurement) : { kind: 'missing' as const };
-  const photoRecencyMessage = latest && photoMeasurement
+  const photoSelection = latest ? selectMeasurementPhotoForDisplay(pool.measurements) : null;
+  const photoRecencyMessage = latest && photoSelection
     ? getMeasurementPhotoRecencyMessage({
         latestMeasurement: latest,
-        photoMeasurement,
+        photoMeasurement: photoSelection.photoMeasurement,
         formatter: value => format(value, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
       })
     : undefined;
-  const photoSrc = latestPhoto.kind === 'missing' ? undefined : latestPhoto.src;
-  const photoCacheKey = photoMeasurement
-    ? `${photoMeasurement.measuredAt.getTime()}-${photoMeasurement.updatedAt.getTime()}`
+  const photoSrc = photoSelection && photoSelection.photoMeasurementState.kind !== 'missing'
+    ? photoSelection.photoMeasurementState.src
+    : undefined;
+  const photoCacheKey = photoSelection
+    ? `${photoSelection.photoMeasurement.measuredAt.getTime()}-${photoSelection.photoMeasurement.updatedAt.getTime()}`
     : undefined;
 
   return (
@@ -168,6 +160,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
               <Image src={qrCode} alt="QR Code da página pública" width={280} height={280} className="mx-auto rounded-2xl border border-slate-200 bg-white p-3" unoptimized />
               <PublicLinkCard publicUrl={publicUrl} warning={publicAppUrl.warning} />
               <Link href={`/public/piscinas/${pool.slug}`} className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">Abrir tela pública</Link>
+              <Link href={`/debug/fotos?poolId=${pool.id}`} className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">Abrir auditoria de fotos desta piscina</Link>
             </div>
             <div className="card space-y-3">
               <h3 className="text-lg font-semibold text-slate-900">Foto mais recente</h3>
@@ -182,7 +175,8 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
                 emptyMessage="Nenhuma foto enviada até o momento."
               />
               {photoRecencyMessage ? <PhotoStorageAlert message={photoRecencyMessage} tone="info" /> : null}
-              {latestPhoto.kind !== 'missing' && latestPhoto.warning ? <PhotoStorageAlert message={latestPhoto.warning} /> : null}
+              {photoSelection?.usesFallback && photoSelection.fallbackReason ? <PhotoStorageAlert message={photoSelection.fallbackReason} tone="info" /> : null}
+              {photoSelection && photoSelection.photoMeasurementState.kind !== 'missing' && photoSelection.photoMeasurementState.warning ? <PhotoStorageAlert message={photoSelection.photoMeasurementState.warning} /> : null}
             </div>
           </aside>
         </section>

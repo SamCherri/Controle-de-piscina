@@ -87,7 +87,13 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
   const existingMeasurement = parsed.data.id
     ? await prisma.measurement.findUnique({
         where: { id: parsed.data.id },
-        select: { id: true, poolId: true, photoData: true, photoMimeType: true, photoPath: true }
+        select: {
+          id: true,
+          poolId: true,
+          photoData: true,
+          photoMimeType: true,
+          photoPath: true
+        }
       })
     : null;
   if (parsed.data.id && (!existingMeasurement || existingMeasurement.poolId !== parsed.data.poolId)) {
@@ -110,24 +116,31 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
 
   const statuses = computeMeasurementStatuses(pool, parsed.data);
 
-  const photoDataPatch =
-    photoPersistence.kind === 'embedded'
+  const hasNewUpload = Boolean(upload.buffer && upload.mimeType);
+  const shouldPreserveExistingPhoto = Boolean(existingMeasurement && !hasNewUpload && !parsed.data.photoPath);
+  const photoFields = photoPersistence.kind === 'embedded'
+    ? {
+        photoData: toPrismaBytes(photoPersistence.photoData),
+        photoMimeType: photoPersistence.photoMimeType,
+        photoPath: null
+      }
+    : photoPersistence.kind === 'preserved-legacy'
       ? {
-          photoData: toPrismaBytes(photoPersistence.photoData),
-          photoMimeType: photoPersistence.photoMimeType,
-          photoPath: null
+          photoData: existingMeasurement?.photoData ?? null,
+          photoMimeType: existingMeasurement?.photoMimeType ?? null,
+          photoPath: photoPersistence.photoPath
         }
-      : photoPersistence.kind === 'preserved-legacy'
+      : shouldPreserveExistingPhoto
         ? {
-            photoPath: photoPersistence.photoPath,
-            ...(existingMeasurement?.photoData ? {} : { photoData: null, photoMimeType: null })
+            photoData: existingMeasurement?.photoData ?? null,
+            photoMimeType: existingMeasurement?.photoMimeType ?? null,
+            photoPath: existingMeasurement?.photoPath ?? null
           }
-        : parsed.data.photoPath
-          ? {
-              photoPath: null,
-              ...(existingMeasurement?.photoData ? {} : { photoData: null, photoMimeType: null })
-            }
-          : {};
+        : {
+            photoData: null,
+            photoMimeType: null,
+            photoPath: null
+          };
 
   if (parsed.data.id) {
     await prisma.measurement.update({
@@ -135,7 +148,7 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
       data: {
         ...parsed.data,
         measuredAt: new Date(parsed.data.measuredAt),
-        ...photoDataPatch,
+        ...photoFields,
         ...statuses
       }
     });
@@ -144,13 +157,7 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
       data: {
         ...parsed.data,
         measuredAt: new Date(parsed.data.measuredAt),
-        photoPath: photoPersistence.kind === 'preserved-legacy' ? photoPersistence.photoPath : null,
-        ...(photoPersistence.kind === 'embedded'
-          ? {
-              photoData: toPrismaBytes(photoPersistence.photoData),
-              photoMimeType: photoPersistence.photoMimeType
-            }
-          : {}),
+        ...photoFields,
         ...statuses
       }
     });
@@ -158,6 +165,7 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
 
   revalidatePath('/');
   revalidatePath(`/condominios/${pool.condominiumId}/piscinas/${pool.id}`);
+  revalidatePath(`/debug/fotos`);
   revalidatePath(`/public/piscinas/${pool.slug}`);
   redirect(`/condominios/${pool.condominiumId}/piscinas/${pool.id}`);
 }
@@ -171,5 +179,6 @@ export async function deleteMeasurementAction(formData: FormData) {
   const pool = await prisma.pool.findUnique({ where: { id: poolId } });
   await prisma.measurement.delete({ where: { id: measurementId } });
   revalidatePath(`/condominios/${condominiumId}/piscinas/${poolId}`);
+  revalidatePath(`/debug/fotos`);
   if (pool) revalidatePath(`/public/piscinas/${pool.slug}`);
 }
