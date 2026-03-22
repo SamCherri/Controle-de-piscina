@@ -31,6 +31,7 @@ export default async function EditMeasurementPage({ params }: { params: { condom
             alt={measurement.pool.name}
             width={900}
             height={650}
+            cacheKey={measurement.measuredAt.getTime()}
             className="h-auto w-full rounded-2xl object-cover"
             fallbackClassName="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400"
             emptyMessage="Esta medição não possui foto salva."
