@@ -1,6 +1,16 @@
+import { promises as fs } from 'node:fs';
+import { extname } from 'node:path';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { normalizeLegacyPhotoPath } from '@/lib/uploads';
+import { normalizeLegacyPhotoPath, resolveLegacyPhotoFilePath } from '@/lib/uploads';
+
+const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml'
+};
 
 export async function GET(request: Request, { params }: { params: { measurementId: string } }) {
   const measurement = await prisma.measurement.findUnique({
@@ -23,9 +33,31 @@ export async function GET(request: Request, { params }: { params: { measurementI
   }
 
   const legacyPhotoPath = normalizeLegacyPhotoPath(measurement.photoPath);
-  if (legacyPhotoPath) {
+  if (!legacyPhotoPath) {
+    return NextResponse.json({ error: 'Nenhuma foto disponível para esta medição.' }, { status: 404 });
+  }
+
+  if (/^https?:\/\//i.test(legacyPhotoPath) || legacyPhotoPath.startsWith('data:')) {
     return NextResponse.redirect(new URL(legacyPhotoPath, request.url));
   }
 
-  return NextResponse.json({ error: 'Nenhuma foto disponível para esta medição.' }, { status: 404 });
+  const legacyPhotoFilePath = resolveLegacyPhotoFilePath(measurement.photoPath);
+  if (!legacyPhotoFilePath) {
+    return NextResponse.json({ error: 'Caminho da foto legado é inválido.' }, { status: 404 });
+  }
+
+  try {
+    const fileBuffer = await fs.readFile(legacyPhotoFilePath);
+    const mimeType = MIME_TYPE_BY_EXTENSION[extname(legacyPhotoFilePath).toLowerCase()] ?? 'application/octet-stream';
+
+    return new NextResponse(fileBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': mimeType,
+        'Cache-Control': 'public, max-age=31536000, immutable'
+      }
+    });
+  } catch {
+    return NextResponse.json({ error: 'A foto legada não foi encontrada neste ambiente.' }, { status: 404 });
+  }
 }

@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
+import { MeasurementPhoto } from '@/components/measurement-photo';
 import { MetricCard } from '@/components/metric-card';
 import { DashboardChart } from '@/components/dashboard-chart';
 import { deleteMeasurementAction } from '@/lib/actions';
@@ -141,11 +142,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
             </div>
             <div className="card space-y-3">
               <h3 className="text-lg font-semibold text-slate-900">Foto mais recente</h3>
-              {latestPhotoSrc ? (
-                <Image src={latestPhotoSrc} alt={pool.name} width={800} height={600} className="h-auto w-full rounded-2xl object-cover" />
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400">Nenhuma foto enviada até o momento.</div>
-              )}
+              <MeasurementPhoto src={latestPhotoSrc} alt={pool.name} width={800} height={600} className="h-auto w-full rounded-2xl object-cover" fallbackClassName="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400" emptyMessage="Nenhuma foto enviada até o momento." />
             </div>
           </aside>
         </section>

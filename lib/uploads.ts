@@ -1,3 +1,4 @@
+import path from 'node:path';
 import sharp from 'sharp';
 
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
@@ -45,8 +46,34 @@ async function inspectImageBuffer(buffer: Buffer) {
 
 export function normalizeLegacyPhotoPath(photoPath?: string | null) {
   if (!photoPath) return undefined;
-  if (/^https?:\/\//i.test(photoPath) || photoPath.startsWith('data:')) return photoPath;
-  return photoPath.startsWith('/') ? photoPath : `/${photoPath}`;
+
+  const trimmedPath = photoPath.trim();
+  if (!trimmedPath) return undefined;
+  if (/^https?:\/\//i.test(trimmedPath) || trimmedPath.startsWith('data:')) return trimmedPath;
+
+  const normalizedSlashes = trimmedPath.replace(/\\/g, '/');
+  const withoutPublicPrefix = normalizedSlashes.replace(/^.*\/public(?=\/)/i, '');
+  const uploadsMatch = withoutPublicPrefix.match(/(?:^|\/)(uploads\/.+)$/i);
+  const candidatePath = uploadsMatch ? `/${uploadsMatch[1]}` : withoutPublicPrefix;
+
+  return candidatePath.startsWith('/') ? candidatePath : `/${candidatePath}`;
+}
+
+export function resolveLegacyPhotoFilePath(photoPath?: string | null) {
+  const normalizedPath = normalizeLegacyPhotoPath(photoPath);
+  if (!normalizedPath || /^https?:\/\//i.test(normalizedPath) || normalizedPath.startsWith('data:')) {
+    return undefined;
+  }
+
+  const relativePath = normalizedPath.replace(/^\/+/, '');
+  const absolutePath = path.join(process.cwd(), 'public', relativePath);
+  const publicRoot = path.join(process.cwd(), 'public') + path.sep;
+
+  if (!absolutePath.startsWith(publicRoot)) {
+    return undefined;
+  }
+
+  return absolutePath;
 }
 
 export async function prepareImageUpload(file: File | null) {
@@ -87,9 +114,9 @@ export async function prepareImageUpload(file: File | null) {
 }
 
 export function getMeasurementPhotoSrc(measurement: { id: string; photoData?: Uint8Array | Buffer | null; photoPath?: string | null }) {
-  if (measurement.photoData && measurement.photoData.length > 0) {
+  if ((measurement.photoData && measurement.photoData.length > 0) || normalizeLegacyPhotoPath(measurement.photoPath)) {
     return `/api/measurements/${measurement.id}/photo`;
   }
 
-  return normalizeLegacyPhotoPath(measurement.photoPath);
+  return undefined;
 }
