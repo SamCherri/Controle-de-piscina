@@ -11,6 +11,7 @@ import { MetricCard } from '@/components/metric-card';
 import { DashboardChart } from '@/components/dashboard-chart';
 import { deleteMeasurementAction } from '@/lib/actions';
 import { statusMeta } from '@/lib/status';
+import { getMeasurementPhotoSrc } from '@/lib/uploads';
 
 export default async function PoolPage({ params }: { params: { condominiumId: string; poolId: string } }) {
   const pool = await prisma.pool.findUnique({
@@ -37,6 +38,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
       ph: item.ph,
       temperatura: item.temperature
     }));
+  const latestPhotoSrc = latest ? getMeasurementPhotoSrc(latest) : undefined;
 
   return (
     <>
@@ -139,8 +141,8 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
             </div>
             <div className="card space-y-3">
               <h3 className="text-lg font-semibold text-slate-900">Foto mais recente</h3>
-              {latest.photoPath ? (
-                <Image src={latest.photoPath} alt={pool.name} width={800} height={600} className="h-auto w-full rounded-2xl object-cover" />
+              {latestPhotoSrc ? (
+                <Image src={latestPhotoSrc} alt={pool.name} width={800} height={600} className="h-auto w-full rounded-2xl object-cover" />
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400">Nenhuma foto enviada até o momento.</div>
               )}

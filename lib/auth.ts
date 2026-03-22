@@ -1,3 +1,4 @@
+import 'server-only';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { verifyPassword } from '@/lib/password';
