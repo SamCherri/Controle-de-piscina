@@ -4,9 +4,10 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { authenticateUser, requireSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { resolveMeasurementPhotoPersistence } from '@/lib/measurement-photo-persistence';
 import { createSession } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
-import { prepareImageUpload, resolveMeasurementPhotoPersistence, toPrismaBytes } from '@/lib/uploads';
+import { prepareImageUpload, toPrismaBytes } from '@/lib/uploads';
 import { slugify } from '@/lib/utils';
 import { condominiumSchema, loginSchema, measurementSchema, poolSchema } from '@/lib/validators';
 
@@ -83,6 +84,16 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
   const pool = await prisma.pool.findUnique({ where: { id: parsed.data.poolId } });
   if (!pool) return { error: 'Piscina não encontrada.' };
 
+  const existingMeasurement = parsed.data.id
+    ? await prisma.measurement.findUnique({
+        where: { id: parsed.data.id },
+        select: { id: true, poolId: true, photoData: true, photoMimeType: true, photoPath: true }
+      })
+    : null;
+  if (parsed.data.id && (!existingMeasurement || existingMeasurement.poolId !== parsed.data.poolId)) {
+    return { error: 'Medição não encontrada.' };
+  }
+
   const upload = await prepareImageUpload(photo);
   if (!upload.ok) {
     return { error: upload.error };
@@ -99,19 +110,32 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
 
   const statuses = computeMeasurementStatuses(pool, parsed.data);
 
+  const photoDataPatch =
+    photoPersistence.kind === 'embedded'
+      ? {
+          photoData: toPrismaBytes(photoPersistence.photoData),
+          photoMimeType: photoPersistence.photoMimeType,
+          photoPath: null
+        }
+      : photoPersistence.kind === 'preserved-legacy'
+        ? {
+            photoPath: photoPersistence.photoPath,
+            ...(existingMeasurement?.photoData ? {} : { photoData: null, photoMimeType: null })
+          }
+        : parsed.data.photoPath
+          ? {
+              photoPath: null,
+              ...(existingMeasurement?.photoData ? {} : { photoData: null, photoMimeType: null })
+            }
+          : {};
+
   if (parsed.data.id) {
     await prisma.measurement.update({
       where: { id: parsed.data.id },
       data: {
         ...parsed.data,
         measuredAt: new Date(parsed.data.measuredAt),
-        photoPath: photoPersistence.photoPath,
-        ...(photoPersistence.source === 'embedded'
-          ? {
-              photoData: toPrismaBytes(photoPersistence.photoData),
-              photoMimeType: photoPersistence.photoMimeType
-            }
-          : {}),
+        ...photoDataPatch,
         ...statuses
       }
     });
@@ -120,8 +144,8 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
       data: {
         ...parsed.data,
         measuredAt: new Date(parsed.data.measuredAt),
-        photoPath: photoPersistence.photoPath,
-        ...(photoPersistence.source === 'embedded'
+        photoPath: photoPersistence.kind === 'preserved-legacy' ? photoPersistence.photoPath : null,
+        ...(photoPersistence.kind === 'embedded'
           ? {
               photoData: toPrismaBytes(photoPersistence.photoData),
               photoMimeType: photoPersistence.photoMimeType

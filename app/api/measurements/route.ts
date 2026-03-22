@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireApiSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { resolveMeasurementPhotoPersistence } from '@/lib/measurement-photo-persistence';
 import { unauthorizedJsonResponse } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
-import { resolveMeasurementPhotoPersistence, toPrismaBytes } from '@/lib/uploads';
+import { toPrismaBytes } from '@/lib/uploads';
 import { measurementSchema } from '@/lib/validators';
 
 export async function GET(request: Request) {
@@ -50,8 +51,8 @@ export async function POST(request: Request) {
     data: {
       ...parsed.data,
       measuredAt: new Date(parsed.data.measuredAt),
-      photoPath: photoPersistence.photoPath,
-      ...(photoPersistence.source === 'embedded'
+      photoPath: photoPersistence.kind === 'preserved-legacy' ? photoPersistence.photoPath : null,
+      ...(photoPersistence.kind === 'embedded'
         ? {
             photoData: toPrismaBytes(photoPersistence.photoData),
             photoMimeType: photoPersistence.photoMimeType

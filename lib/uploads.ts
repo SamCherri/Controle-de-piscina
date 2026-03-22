@@ -1,6 +1,4 @@
-import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { extname } from 'node:path';
 import sharp from 'sharp';
 
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
@@ -19,56 +17,35 @@ export type MeasurementPhotoState =
   | { kind: 'legacy-local'; src: string; warning: string }
   | { kind: 'missing'; src?: undefined; warning?: undefined };
 
-const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png',
-  '.webp': 'image/webp'
-};
+export type AllowedUploadMimeType = (typeof ALLOWED_UPLOAD_MIME_TYPES)[number];
 
-const EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+export type PreparedImageUpload =
+  | { ok: true; fileName?: string; mimeType?: AllowedUploadMimeType; buffer?: Buffer }
+  | { ok: false; error: string };
+
+const EXTENSION_BY_MIME_TYPE: Record<AllowedUploadMimeType, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp'
 };
 
-const EXTERNAL_FETCH_TIMEOUT_MS = 8000;
-
-type AllowedUploadMimeType = (typeof ALLOWED_UPLOAD_MIME_TYPES)[number];
-
-type PreparedImageUpload =
-  | { ok: true; fileName?: string; mimeType?: AllowedUploadMimeType; buffer?: Buffer }
-  | { ok: false; error: string };
-
-export type MeasurementPhotoPersistenceResult =
-  | {
-      ok: true;
-      source: 'none';
-      photoPath: string | null;
-      photoData?: undefined;
-      photoMimeType?: undefined;
-    }
-  | {
-      ok: true;
-      source: 'embedded';
-      photoPath: null;
-      photoData: Buffer;
-      photoMimeType: AllowedUploadMimeType;
-    }
-  | {
-      ok: true;
-      source: 'legacy';
-      photoPath: string;
-      photoData?: undefined;
-      photoMimeType?: undefined;
-    }
-  | {
-      ok: false;
-      error: string;
-    };
-
 export function toPrismaBytes(buffer: Buffer) {
   return new Uint8Array(buffer);
+}
+
+export function normalizeMimeType(mimeType?: string | null) {
+  const normalizedMimeType = mimeType?.split(';')[0]?.trim().toLowerCase();
+  if (!normalizedMimeType) {
+    return undefined;
+  }
+
+  return ALLOWED_UPLOAD_MIME_TYPES.includes(normalizedMimeType as AllowedUploadMimeType)
+    ? (normalizedMimeType as AllowedUploadMimeType)
+    : undefined;
+}
+
+export function getFileExtensionForMimeType(mimeType: AllowedUploadMimeType) {
+  return EXTENSION_BY_MIME_TYPE[mimeType];
 }
 
 export function validateImageUpload(file: File | null) {
@@ -80,8 +57,8 @@ export function validateImageUpload(file: File | null) {
     return { ok: false as const, error: 'A imagem deve ter no máximo 5 MB.' };
   }
 
-  const mimeType = file.type.toLowerCase();
-  if (!ALLOWED_UPLOAD_MIME_TYPES.includes(mimeType as (typeof ALLOWED_UPLOAD_MIME_TYPES)[number])) {
+  const mimeType = normalizeMimeType(file.type);
+  if (!mimeType) {
     return { ok: false as const, error: 'Envie uma imagem JPG, PNG ou WEBP.' };
   }
 
@@ -106,7 +83,7 @@ function validateImageFileName(fileName: string, mimeType: AllowedUploadMimeType
     return { ok: false as const, error: 'O conteúdo da imagem não corresponde ao tipo do arquivo enviado.' };
   }
 
-  return { ok: true as const, extension: normalizedExtension };
+  return { ok: true as const };
 }
 
 async function inspectImageBuffer(buffer: Buffer) {
@@ -126,50 +103,7 @@ async function inspectImageBuffer(buffer: Buffer) {
   }
 }
 
-export function normalizeLegacyPhotoPath(photoPath?: string | null) {
-  if (!photoPath) return undefined;
-
-  const trimmedPath = photoPath.trim();
-  if (!trimmedPath) return undefined;
-  if (/^https?:\/\//i.test(trimmedPath) || trimmedPath.startsWith('data:')) return trimmedPath;
-
-  const normalizedSlashes = trimmedPath.replace(/\\/g, '/');
-  const withoutPublicPrefix = normalizedSlashes.replace(/^.*\/public(?=\/)/i, '');
-  const uploadsMatch = withoutPublicPrefix.match(/(?:^|\/)(uploads\/.+)$/i);
-  const candidatePath = uploadsMatch ? `/${uploadsMatch[1]}` : withoutPublicPrefix;
-
-  return candidatePath.startsWith('/') ? candidatePath : `/${candidatePath}`;
-}
-
-function normalizeMimeType(mimeType?: string | null) {
-  const normalizedMimeType = mimeType?.split(';')[0]?.trim().toLowerCase();
-  if (!normalizedMimeType) {
-    return undefined;
-  }
-
-  return ALLOWED_UPLOAD_MIME_TYPES.includes(normalizedMimeType as AllowedUploadMimeType)
-    ? (normalizedMimeType as AllowedUploadMimeType)
-    : undefined;
-}
-
-export function resolveLegacyPhotoFilePath(photoPath?: string | null) {
-  const normalizedPath = normalizeLegacyPhotoPath(photoPath);
-  if (!normalizedPath || /^https?:\/\//i.test(normalizedPath) || normalizedPath.startsWith('data:')) {
-    return undefined;
-  }
-
-  const relativePath = normalizedPath.replace(/^\/+/, '');
-  const absolutePath = path.join(process.cwd(), 'public', relativePath);
-  const publicRoot = path.join(process.cwd(), 'public') + path.sep;
-
-  if (!absolutePath.startsWith(publicRoot)) {
-    return undefined;
-  }
-
-  return absolutePath;
-}
-
-async function prepareImageBuffer({
+export async function prepareImageBuffer({
   buffer,
   mimeType,
   fileName
@@ -226,194 +160,39 @@ export async function prepareImageUpload(file: File | null): Promise<PreparedIma
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const { mimeType } = validation;
-  if (!mimeType) {
-    return { ok: false as const, error: 'Falha ao validar o arquivo enviado.' };
-  }
-
-  return prepareImageBuffer({ buffer, mimeType, fileName: file.name });
+  return prepareImageBuffer({ buffer, mimeType: validation.mimeType, fileName: file.name });
 }
 
-function inferSupportedMimeTypeFromPath(photoPath: string) {
-  return MIME_TYPE_BY_EXTENSION[extname(photoPath).toLowerCase()];
+export function normalizeLegacyPhotoPath(photoPath?: string | null) {
+  if (!photoPath) return undefined;
+
+  const trimmedPath = photoPath.trim();
+  if (!trimmedPath) return undefined;
+  if (/^https?:\/\//i.test(trimmedPath) || trimmedPath.startsWith('data:')) return trimmedPath;
+
+  const normalizedSlashes = trimmedPath.replace(/\\/g, '/');
+  const withoutPublicPrefix = normalizedSlashes.replace(/^.*\/public(?=\/)/i, '');
+  const uploadsMatch = withoutPublicPrefix.match(/(?:^|\/)(uploads\/.+)$/i);
+  const candidatePath = uploadsMatch ? `/${uploadsMatch[1]}` : withoutPublicPrefix;
+
+  return candidatePath.startsWith('/') ? candidatePath : `/${candidatePath}`;
 }
 
-async function persistDataUrlPhoto(dataUrl: string) {
-  const match = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/i);
-  if (!match) {
-    return { ok: false as const, error: 'Data URL de foto inválida ou em formato não suportado.' };
+export function resolveLegacyPhotoFilePath(photoPath?: string | null) {
+  const normalizedPath = normalizeLegacyPhotoPath(photoPath);
+  if (!normalizedPath || /^https?:\/\//i.test(normalizedPath) || normalizedPath.startsWith('data:')) {
+    return undefined;
   }
 
-  const [, mimeType, base64Payload] = match;
-  const buffer = Buffer.from(base64Payload, 'base64');
-  const fileExtension = EXTENSION_BY_MIME_TYPE[mimeType.toLowerCase()];
-  const upload = await prepareImageBuffer({ buffer, mimeType, fileName: `measurement.${fileExtension}` });
+  const relativePath = normalizedPath.replace(/^\/+/, '');
+  const absolutePath = path.join(process.cwd(), 'public', relativePath);
+  const publicRoot = path.join(process.cwd(), 'public') + path.sep;
 
-  if (!upload.ok || !upload.buffer || !upload.mimeType) {
-    return upload.ok
-      ? { ok: false as const, error: 'Falha ao processar a foto em data URL.' }
-      : upload;
+  if (!absolutePath.startsWith(publicRoot)) {
+    return undefined;
   }
 
-  return {
-    ok: true as const,
-    photoData: upload.buffer,
-    photoMimeType: upload.mimeType,
-    photoPath: null
-  };
-}
-
-async function persistExternalPhoto(photoUrl: string) {
-  const abortController = new AbortController();
-  const timeout = setTimeout(() => abortController.abort(), EXTERNAL_FETCH_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(photoUrl, {
-      cache: 'no-store',
-      redirect: 'follow',
-      signal: abortController.signal
-    });
-    if (!response.ok) {
-      return { ok: false as const, error: 'Falha ao baixar a foto externa informada.' };
-    }
-
-    const contentLength = Number(response.headers.get('content-length'));
-    if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_SIZE_BYTES) {
-      return { ok: false as const, error: 'A foto externa excede o limite de 5 MB.' };
-    }
-
-    const mimeType = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase();
-    const normalizedMimeType = normalizeMimeType(mimeType);
-    const fileName = (() => {
-      try {
-        const pathname = new URL(photoUrl).pathname;
-        const baseName = pathname.split('/').pop()?.trim();
-        if (baseName) {
-          return baseName;
-        }
-      } catch {
-        // fallback below
-      }
-
-      const extension = normalizedMimeType ? EXTENSION_BY_MIME_TYPE[normalizedMimeType] : 'jpg';
-      return `measurement-upload.${extension}`;
-    })();
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.length > MAX_UPLOAD_SIZE_BYTES) {
-      return { ok: false as const, error: 'A foto externa excede o limite de 5 MB.' };
-    }
-
-    const upload = await prepareImageBuffer({ buffer, mimeType, fileName });
-
-    if (!upload.ok || !upload.buffer || !upload.mimeType) {
-      return upload.ok
-        ? { ok: false as const, error: 'Falha ao validar a foto externa baixada.' }
-        : upload;
-    }
-
-    return {
-      ok: true as const,
-      photoData: upload.buffer,
-      photoMimeType: upload.mimeType,
-      photoPath: null
-    };
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      return { ok: false as const, error: 'Tempo esgotado ao acessar a foto externa informada.' };
-    }
-
-    return { ok: false as const, error: 'Falha ao acessar a foto externa informada.' };
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function persistLegacyLocalPhoto(photoPath: string) {
-  const absolutePath = resolveLegacyPhotoFilePath(photoPath);
-  if (!absolutePath) {
-    return { ok: false as const, error: 'Caminho da foto legado é inválido.' };
-  }
-
-  try {
-    const buffer = await fs.readFile(absolutePath);
-    const mimeType = inferSupportedMimeTypeFromPath(absolutePath);
-    if (!mimeType) {
-      return { ok: false as const, error: 'A extensão da foto legada não é suportada.' };
-    }
-
-    const upload = await prepareImageBuffer({
-      buffer,
-      mimeType,
-      fileName: path.basename(absolutePath)
-    });
-
-    if (!upload.ok || !upload.buffer || !upload.mimeType) {
-      return upload.ok
-        ? { ok: false as const, error: 'Falha ao validar a foto legada encontrada.' }
-        : upload;
-    }
-
-    return {
-      ok: true as const,
-      photoData: upload.buffer,
-      photoMimeType: upload.mimeType,
-      photoPath: null
-    };
-  } catch {
-    return { ok: false as const, error: 'A foto legada não foi encontrada neste ambiente.' };
-  }
-}
-
-export async function resolveMeasurementPhotoPersistence({
-  photoPath,
-  upload,
-  onRecoveryFailure = 'error'
-}: {
-  photoPath?: string | null;
-  upload?:
-    | {
-        buffer?: Buffer;
-        mimeType?: AllowedUploadMimeType;
-      }
-    | undefined;
-  onRecoveryFailure?: 'error' | 'preserve-legacy-path';
-}): Promise<MeasurementPhotoPersistenceResult> {
-  if (upload?.buffer && upload.mimeType) {
-    return {
-      ok: true,
-      source: 'embedded',
-      photoData: upload.buffer,
-      photoMimeType: upload.mimeType,
-      photoPath: null
-    };
-  }
-
-  const normalizedPhotoPath = normalizeLegacyPhotoPath(photoPath);
-  if (!normalizedPhotoPath) {
-    return { ok: true, source: 'none', photoPath: photoPath ?? null };
-  }
-
-  const resolvedPhoto =
-    normalizedPhotoPath.startsWith('data:')
-      ? await persistDataUrlPhoto(normalizedPhotoPath)
-      : /^https?:\/\//i.test(normalizedPhotoPath)
-        ? await persistExternalPhoto(normalizedPhotoPath)
-        : await persistLegacyLocalPhoto(normalizedPhotoPath);
-
-  if (resolvedPhoto.ok) {
-    return { ...resolvedPhoto, source: 'embedded' };
-  }
-
-  if (onRecoveryFailure === 'preserve-legacy-path') {
-    return {
-      ok: true,
-      source: 'legacy',
-      photoPath: normalizedPhotoPath
-    };
-  }
-
-  return resolvedPhoto;
+  return absolutePath;
 }
 
 export function getMeasurementPhotoState(measurement: MeasurementPhotoRecord): MeasurementPhotoState {
@@ -429,11 +208,19 @@ export function getMeasurementPhotoState(measurement: MeasurementPhotoRecord): M
     return { kind: 'missing' };
   }
 
-  if (/^https?:\/\//i.test(normalizedLegacyPath) || normalizedLegacyPath.startsWith('data:')) {
+  if (/^https?:\/\//i.test(normalizedLegacyPath)) {
     return {
       kind: 'legacy-external',
       src: `/api/measurements/${measurement.id}/photo`,
       warning: 'Esta foto ainda depende de uma origem externa legada. Se o link antigo sair do ar, será necessário reenviar a imagem para mantê-la disponível.'
+    };
+  }
+
+  if (normalizedLegacyPath.startsWith('data:')) {
+    return {
+      kind: 'legacy-external',
+      src: `/api/measurements/${measurement.id}/photo`,
+      warning: 'Esta foto usa um formato legado data URL. Reenviar a imagem grava a foto definitivamente no banco.'
     };
   }
 
