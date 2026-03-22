@@ -46,6 +46,8 @@ A causa raiz mais provável do sintoma "a foto não aparece ao ler o QR code" é
 
 1. O `cacheKey` das fotos foi alterado para usar `updatedAt`.
 2. A rota da foto foi endurecida para usar revalidação (`must-revalidate`) em vez de `immutable` numa URL que pode mudar de conteúdo ao longo do tempo.
+3. A página pública e a tela administrativa da piscina passaram a exibir a última foto disponível mesmo quando a medição mais recente ainda não possui imagem, informando claramente ao usuário quando a foto mostrada pertence a uma medição anterior.
+4. Foi adicionado um diagnóstico operacional (`npm run photos:audit`) para localizar medições sem foto, registros legados e piscinas em que o fallback visual entrou em ação.
 
 ## Próximos passos operacionais recomendados
 

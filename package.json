@@ -13,7 +13,8 @@
     "postinstall": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "railway:migrate": "prisma migrate deploy",
-    "photos:backfill-legacy": "tsx scripts/backfill-legacy-photos.ts"
+    "photos:backfill-legacy": "tsx scripts/backfill-legacy-photos.ts",
+    "photos:audit": "tsx scripts/photo-diagnostic-report.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
