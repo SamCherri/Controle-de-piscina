@@ -5,6 +5,18 @@ export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_UPLOAD_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const ALLOWED_UPLOAD_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
 
+export type MeasurementPhotoRecord = {
+  id: string;
+  photoData?: Uint8Array | Buffer | null;
+  photoPath?: string | null;
+};
+
+export type MeasurementPhotoState =
+  | { kind: 'embedded'; src: string; warning?: undefined }
+  | { kind: 'legacy-external'; src: string; warning: string }
+  | { kind: 'legacy-local'; src: string; warning: string }
+  | { kind: 'missing'; src?: undefined; warning?: undefined };
+
 export function validateImageUpload(file: File | null) {
   if (!file || file.size === 0) {
     return { ok: true as const };
@@ -113,10 +125,35 @@ export async function prepareImageUpload(file: File | null) {
   };
 }
 
-export function getMeasurementPhotoSrc(measurement: { id: string; photoData?: Uint8Array | Buffer | null; photoPath?: string | null }) {
-  if ((measurement.photoData && measurement.photoData.length > 0) || normalizeLegacyPhotoPath(measurement.photoPath)) {
-    return `/api/measurements/${measurement.id}/photo`;
+export function getMeasurementPhotoState(measurement: MeasurementPhotoRecord): MeasurementPhotoState {
+  if (measurement.photoData && measurement.photoData.length > 0) {
+    return {
+      kind: 'embedded',
+      src: `/api/measurements/${measurement.id}/photo`
+    };
   }
 
-  return undefined;
+  const normalizedLegacyPath = normalizeLegacyPhotoPath(measurement.photoPath);
+  if (!normalizedLegacyPath) {
+    return { kind: 'missing' };
+  }
+
+  if (/^https?:\/\//i.test(normalizedLegacyPath) || normalizedLegacyPath.startsWith('data:')) {
+    return {
+      kind: 'legacy-external',
+      src: `/api/measurements/${measurement.id}/photo`,
+      warning: 'Esta foto ainda depende de uma origem externa legada. Se o link antigo sair do ar, será necessário reenviar a imagem para mantê-la disponível.'
+    };
+  }
+
+  return {
+    kind: 'legacy-local',
+    src: `/api/measurements/${measurement.id}/photo`,
+    warning: 'Esta foto veio do armazenamento local legado. Em deploys/restarts do Railway, arquivos locais antigos podem sumir; reenvie a imagem para gravá-la definitivamente no banco.'
+  };
+}
+
+export function getMeasurementPhotoSrc(measurement: MeasurementPhotoRecord) {
+  const state = getMeasurementPhotoState(measurement);
+  return state.kind === 'missing' ? undefined : state.src;
 }
