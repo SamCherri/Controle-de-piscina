@@ -7,8 +7,7 @@ import { MeasurementPhoto } from '@/components/measurement-photo';
 import { StatusBadge } from '@/components/status-badge';
 import { PhotoStorageAlert } from '@/components/photo-storage-alert';
 import { statusMeta } from '@/lib/status';
-import { getMeasurementPhotoState } from '@/lib/uploads';
-import { getMeasurementPhotoRecencyMessage } from '@/lib/measurement-photo-summary';
+import { selectMeasurementPhotoForDisplay, getMeasurementPhotoRecencyMessage } from '@/lib/measurement-photo-summary';
 
 export default async function PublicPoolPage({ params }: { params: { slug: string } }) {
   const pool = await prisma.pool.findUnique({
@@ -16,8 +15,34 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
     include: {
       condominium: true,
       measurements: {
-        orderBy: { measuredAt: 'desc' },
-        take: 1
+        orderBy: [
+          { measuredAt: 'desc' },
+          { createdAt: 'desc' }
+        ],
+        take: 30,
+        select: {
+          id: true,
+          measuredAt: true,
+          updatedAt: true,
+          createdAt: true,
+          responsibleName: true,
+          chlorine: true,
+          ph: true,
+          alkalinity: true,
+          hardness: true,
+          temperature: true,
+          productsApplied: true,
+          observations: true,
+          overallStatus: true,
+          chlorineStatus: true,
+          phStatus: true,
+          alkalinityStatus: true,
+          hardnessStatus: true,
+          temperatureStatus: true,
+          photoData: true,
+          photoMimeType: true,
+          photoPath: true
+        }
       }
     }
   });
@@ -26,26 +51,16 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
   const latest = pool.measurements[0];
   if (!latest) notFound();
 
-  const latestPhotoMeasurement = await prisma.measurement.findFirst({
-    where: {
-      poolId: pool.id,
-      OR: [
-        { photoData: { not: null } },
-        { photoPath: { not: null } }
-      ]
-    },
-    orderBy: { measuredAt: 'desc' }
-  });
+  const photoSelection = selectMeasurementPhotoForDisplay(pool.measurements);
+  if (!photoSelection) notFound();
 
-  const photoMeasurement = latestPhotoMeasurement ?? latest;
-  const latestPhoto = getMeasurementPhotoState(photoMeasurement);
   const photoRecencyMessage = getMeasurementPhotoRecencyMessage({
     latestMeasurement: latest,
-    photoMeasurement,
+    photoMeasurement: photoSelection.photoMeasurement,
     formatter: value => format(value, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
   });
-  const photoSrc = latestPhoto.kind === 'missing' ? undefined : latestPhoto.src;
-  const photoCacheKey = `${photoMeasurement.measuredAt.getTime()}-${photoMeasurement.updatedAt.getTime()}`;
+  const photoSrc = photoSelection.photoMeasurementState.kind === 'missing' ? undefined : photoSelection.photoMeasurementState.src;
+  const photoCacheKey = `${photoSelection.photoMeasurement.measuredAt.getTime()}-${photoSelection.photoMeasurement.updatedAt.getTime()}`;
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50">
@@ -81,7 +96,8 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
                   missingMessage="A foto desta medição não pôde ser carregada nesta página."
                 />
                 {photoRecencyMessage ? <PhotoStorageAlert message={photoRecencyMessage} tone="info" /> : null}
-                {latestPhoto.warning ? <PhotoStorageAlert message={latestPhoto.warning} tone="info" /> : null}
+                {photoSelection.usesFallback && photoSelection.fallbackReason ? <PhotoStorageAlert message={photoSelection.fallbackReason} tone="info" /> : null}
+                {photoSelection.photoMeasurementState.kind !== 'missing' && photoSelection.photoMeasurementState.warning ? <PhotoStorageAlert message={photoSelection.photoMeasurementState.warning} tone="info" /> : null}
               </div>
             </div>
           </div>

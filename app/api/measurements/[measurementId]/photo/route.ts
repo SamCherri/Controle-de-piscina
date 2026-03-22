@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { resolveMeasurementPhotoDelivery } from '@/lib/measurement-photo-persistence';
-import { toPrismaBytes } from '@/lib/uploads';
+import { normalizeMimeType, toPrismaBytes } from '@/lib/uploads';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -45,8 +45,9 @@ export async function GET(_request: Request, { params }: { params: { measurement
     return buildJsonErrorResponse('Medição não encontrada.', 404);
   }
 
-  if (measurement.photoData && measurement.photoMimeType) {
-    return buildPhotoResponse(new Uint8Array(measurement.photoData), measurement.photoMimeType);
+  const normalizedMimeType = normalizeMimeType(measurement.photoMimeType);
+  if (measurement.photoData && measurement.photoData.length > 0 && normalizedMimeType) {
+    return buildPhotoResponse(new Uint8Array(measurement.photoData), normalizedMimeType);
   }
 
   const legacyPhoto = await resolveMeasurementPhotoDelivery(measurement.photoPath);
@@ -65,5 +66,9 @@ export async function GET(_request: Request, { params }: { params: { measurement
     return buildPhotoResponse(new Uint8Array(legacyPhoto.photoData), legacyPhoto.photoMimeType);
   }
 
-  return buildJsonErrorResponse(legacyPhoto.error, 404);
+  const inconsistencyMessage = measurement.photoData && measurement.photoData.length > 0 && !normalizedMimeType
+    ? 'photoData existe, mas photoMimeType está ausente ou inválido nesta medição.'
+    : legacyPhoto.error;
+
+  return buildJsonErrorResponse(inconsistencyMessage, 404);
 }

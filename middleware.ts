@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 const PUBLIC_PATH_PREFIXES = ['/login', '/public', '/_next', '/icons', '/manifest'];
 const PUBLIC_EXACT_PATHS = new Set(['/sw.js']);
 const PUBLIC_API_PATHS = new Set(['/api/auth/login']);
-const PROTECTED_API_PREFIXES = ['/api/measurements', '/api/uploads'];
+const PROTECTED_API_PREFIXES = ['/api/debug', '/api/measurements', '/api/uploads'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

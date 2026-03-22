@@ -8,6 +8,7 @@ export const ALLOWED_UPLOAD_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const
 export type MeasurementPhotoRecord = {
   id: string;
   photoData?: Uint8Array | Buffer | null;
+  photoMimeType?: string | null;
   photoPath?: string | null;
 };
 
@@ -195,8 +196,20 @@ export function resolveLegacyPhotoFilePath(photoPath?: string | null) {
   return absolutePath;
 }
 
+export function hasEmbeddedMeasurementPhoto(measurement: Pick<MeasurementPhotoRecord, 'photoData' | 'photoMimeType'>) {
+  return Boolean(measurement.photoData && measurement.photoData.length > 0 && normalizeMimeType(measurement.photoMimeType));
+}
+
+export function hasLegacyMeasurementPhoto(measurement: Pick<MeasurementPhotoRecord, 'photoPath'>) {
+  return Boolean(normalizeLegacyPhotoPath(measurement.photoPath));
+}
+
+export function hasUsableMeasurementPhoto(measurement: MeasurementPhotoRecord) {
+  return hasEmbeddedMeasurementPhoto(measurement) || hasLegacyMeasurementPhoto(measurement);
+}
+
 export function getMeasurementPhotoState(measurement: MeasurementPhotoRecord): MeasurementPhotoState {
-  if (measurement.photoData && measurement.photoData.length > 0) {
+  if (hasEmbeddedMeasurementPhoto(measurement)) {
     return {
       kind: 'embedded',
       src: `/api/measurements/${measurement.id}/photo`
