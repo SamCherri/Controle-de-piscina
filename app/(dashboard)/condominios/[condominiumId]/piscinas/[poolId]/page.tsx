@@ -7,9 +7,11 @@ import QRCode from 'qrcode';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
+import { MeasurementPhoto } from '@/components/measurement-photo';
 import { MetricCard } from '@/components/metric-card';
 import { DashboardChart } from '@/components/dashboard-chart';
 import { deleteMeasurementAction } from '@/lib/actions';
+import { getPublicAppUrl } from '@/lib/public-url';
 import { statusMeta } from '@/lib/status';
 import { getMeasurementPhotoSrc } from '@/lib/uploads';
 
@@ -28,7 +30,8 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
   if (!pool || pool.condominiumId !== params.condominiumId) notFound();
 
   const latest = pool.measurements[0];
-  const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/public/piscinas/${pool.slug}`;
+  const publicBaseUrl = getPublicAppUrl();
+  const publicUrl = `${publicBaseUrl}/public/piscinas/${pool.slug}`;
   const qrCode = await QRCode.toDataURL(publicUrl, { margin: 1, width: 280 });
   const chartData = [...pool.measurements]
     .reverse()
@@ -141,11 +144,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
             </div>
             <div className="card space-y-3">
               <h3 className="text-lg font-semibold text-slate-900">Foto mais recente</h3>
-              {latestPhotoSrc ? (
-                <Image src={latestPhotoSrc} alt={pool.name} width={800} height={600} className="h-auto w-full rounded-2xl object-cover" />
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400">Nenhuma foto enviada até o momento.</div>
-              )}
+              <MeasurementPhoto src={latestPhotoSrc} alt={pool.name} width={800} height={600} className="h-auto w-full rounded-2xl object-cover" fallbackClassName="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400" emptyMessage="Nenhuma foto enviada até o momento." />
             </div>
           </aside>
         </section>

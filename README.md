@@ -131,7 +131,8 @@ DEFAULT_ADMIN_NAME="Administrador"
 
 - `DATABASE_URL`: conexão PostgreSQL usada pelo Prisma.
 - `AUTH_SECRET`: segredo usado para assinar a sessão JWT.
-- `NEXT_PUBLIC_APP_URL`: base pública usada na geração dos QR Codes.
+- `NEXT_PUBLIC_APP_URL`: base pública usada como fallback na geração dos QR Codes quando o host atual da requisição não estiver disponível.
+- Em produção, o QR Code prioriza automaticamente o domínio da requisição atual (`host`/`x-forwarded-host`), evitando links `localhost` ao escanear de outro dispositivo.
 - `DEFAULT_ADMIN_EMAIL`: e-mail do administrador padrão criado automaticamente.
 - `DEFAULT_ADMIN_PASSWORD`: senha do administrador padrão criado automaticamente.
 - `DEFAULT_ADMIN_NAME`: nome exibido para o administrador padrão.

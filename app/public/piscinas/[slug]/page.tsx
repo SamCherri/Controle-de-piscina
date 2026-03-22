@@ -1,9 +1,9 @@
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { prisma } from '@/lib/db';
 import { MetricCard } from '@/components/metric-card';
+import { MeasurementPhoto } from '@/components/measurement-photo';
 import { StatusBadge } from '@/components/status-badge';
 import { statusMeta } from '@/lib/status';
 import { getMeasurementPhotoSrc } from '@/lib/uploads';
@@ -48,11 +48,7 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
               </div>
             </div>
             <div>
-              {latestPhotoSrc ? (
-                <Image src={latestPhotoSrc} alt={pool.name} width={1000} height={700} className="h-full min-h-[280px] w-full rounded-[28px] object-cover" />
-              ) : (
-                <div className="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-white/10 text-sm text-brand-50/70">Sem foto recente disponível.</div>
-              )}
+              <MeasurementPhoto src={latestPhotoSrc} alt={pool.name} width={1000} height={700} className="h-full min-h-[280px] w-full rounded-[28px] object-cover" fallbackClassName="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-white/10 px-6 text-center text-sm text-brand-50/70" />
             </div>
           </div>
         </section>
