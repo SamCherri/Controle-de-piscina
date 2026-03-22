@@ -16,6 +16,7 @@ import { deleteMeasurementAction } from '@/lib/actions';
 import { resolvePublicAppUrl } from '@/lib/public-url';
 import { statusMeta } from '@/lib/status';
 import { getMeasurementPhotoState } from '@/lib/uploads';
+import { getMeasurementPhotoRecencyMessage } from '@/lib/measurement-photo-summary';
 
 export default async function PoolPage({ params }: { params: { condominiumId: string; poolId: string } }) {
   const pool = await prisma.pool.findUnique({
@@ -43,7 +44,26 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
       ph: item.ph,
       temperatura: item.temperature
     }));
-  const latestPhoto = latest ? getMeasurementPhotoState(latest) : { kind: 'missing' as const };
+  const photoMeasurement = latest
+    ? await prisma.measurement.findFirst({
+        where: {
+          poolId: pool.id,
+          OR: [
+            { photoData: { not: null } },
+            { photoPath: { not: null } }
+          ]
+        },
+        orderBy: { measuredAt: 'desc' }
+      }) ?? latest
+    : undefined;
+  const latestPhoto = photoMeasurement ? getMeasurementPhotoState(photoMeasurement) : { kind: 'missing' as const };
+  const photoRecencyMessage = latest && photoMeasurement
+    ? getMeasurementPhotoRecencyMessage({
+        latestMeasurement: latest,
+        photoMeasurement,
+        formatter: value => format(value, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+      })
+    : undefined;
 
   return (
     <>
@@ -146,7 +166,8 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
             </div>
             <div className="card space-y-3">
               <h3 className="text-lg font-semibold text-slate-900">Foto mais recente</h3>
-              <MeasurementPhoto src={latestPhoto.kind === 'missing' ? undefined : latestPhoto.src} alt={pool.name} width={800} height={600} cacheKey={latest.measuredAt.getTime()} className="h-auto w-full rounded-2xl object-cover" fallbackClassName="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400" emptyMessage="Nenhuma foto enviada até o momento." />
+              <MeasurementPhoto src={latestPhoto.kind === 'missing' ? undefined : latestPhoto.src} alt={pool.name} width={800} height={600} cacheKey={photoMeasurement?.updatedAt.getTime()} className="h-auto w-full rounded-2xl object-cover" fallbackClassName="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400" emptyMessage="Nenhuma foto enviada até o momento." />
+              {photoRecencyMessage ? <PhotoStorageAlert message={photoRecencyMessage} tone="info" /> : null}
               {latestPhoto.kind !== 'missing' && latestPhoto.warning ? <PhotoStorageAlert message={latestPhoto.warning} /> : null}
             </div>
           </aside>

@@ -207,6 +207,9 @@ Upload de imagem validado e protegido por sessão, com retorno dos metadados do 
 ### `npm run photos:backfill-legacy`
 Migra fotos antigas ainda acessíveis no disco para `photoData`/`photoMimeType` no banco, eliminando dependência do filesystem efêmero do Railway. Registros cujo arquivo já sumiu precisam de reenvio manual da foto.
 
+### `npm run photos:audit`
+Gera um diagnóstico operacional das medições com foto no banco, registros ainda presos em `photoPath`, medições sem foto e piscinas cuja última medição está sem foto, mas ainda existe uma foto anterior utilizável para fallback na página pública.
+
 ## Deploy no Railway
 
 Fluxo recomendado para evitar o erro `The table public.AdminUser does not exist in the current database` sem acoplar migration ao build:

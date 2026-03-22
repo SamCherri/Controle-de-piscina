@@ -11,7 +11,7 @@ function buildPhotoResponse(photoData: Uint8Array, photoMimeType: string) {
       'Content-Type': photoMimeType,
       'Content-Length': String(photoData.byteLength),
       'Content-Disposition': 'inline',
-      'Cache-Control': 'public, max-age=31536000, immutable, no-transform',
+      'Cache-Control': 'public, max-age=0, must-revalidate, no-transform',
       'X-Content-Type-Options': 'nosniff'
     }
   });
