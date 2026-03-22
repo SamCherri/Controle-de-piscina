@@ -11,6 +11,7 @@ import { MeasurementPhoto } from '@/components/measurement-photo';
 import { MetricCard } from '@/components/metric-card';
 import { DashboardChart } from '@/components/dashboard-chart';
 import { deleteMeasurementAction } from '@/lib/actions';
+import { getPublicAppUrl } from '@/lib/public-url';
 import { statusMeta } from '@/lib/status';
 import { getMeasurementPhotoSrc } from '@/lib/uploads';
 
@@ -29,7 +30,8 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
   if (!pool || pool.condominiumId !== params.condominiumId) notFound();
 
   const latest = pool.measurements[0];
-  const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/public/piscinas/${pool.slug}`;
+  const publicBaseUrl = getPublicAppUrl();
+  const publicUrl = `${publicBaseUrl}/public/piscinas/${pool.slug}`;
   const qrCode = await QRCode.toDataURL(publicUrl, { margin: 1, width: 280 });
   const chartData = [...pool.measurements]
     .reverse()
