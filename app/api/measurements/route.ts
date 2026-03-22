@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       ...parsed.data,
       measuredAt: new Date(parsed.data.measuredAt),
       photoPath: photoPersistence.photoPath,
-      ...(photoPersistence.photoData && photoPersistence.photoMimeType
+      ...(photoPersistence.source === 'embedded'
         ? {
             photoData: toPrismaBytes(photoPersistence.photoData),
             photoMimeType: photoPersistence.photoMimeType

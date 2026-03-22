@@ -40,7 +40,7 @@ export async function GET(request: Request, { params }: { params: { measurementI
   const persistedLegacyPhoto = await resolveMeasurementPhotoPersistence({
     photoPath: legacyPhotoPath
   });
-  if (persistedLegacyPhoto.ok && persistedLegacyPhoto.photoData && persistedLegacyPhoto.photoMimeType) {
+  if (persistedLegacyPhoto.ok && persistedLegacyPhoto.source === 'embedded') {
     await prisma.measurement.update({
       where: { id: params.measurementId },
       data: {
@@ -59,7 +59,11 @@ export async function GET(request: Request, { params }: { params: { measurementI
     });
   }
 
-  if (/^https?:\/\//i.test(legacyPhotoPath) || legacyPhotoPath.startsWith('data:')) {
+  if (legacyPhotoPath.startsWith('data:')) {
+    return NextResponse.json({ error: 'A foto em data URL não pôde ser recuperada.' }, { status: 404 });
+  }
+
+  if (/^https?:\/\//i.test(legacyPhotoPath)) {
     return NextResponse.redirect(new URL(legacyPhotoPath, request.url));
   }
 

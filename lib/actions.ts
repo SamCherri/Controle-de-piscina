@@ -90,7 +90,8 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
 
   const photoPersistence = await resolveMeasurementPhotoPersistence({
     photoPath: parsed.data.photoPath,
-    upload
+    upload,
+    onRecoveryFailure: parsed.data.id ? 'preserve-legacy-path' : 'error'
   });
   if (!photoPersistence.ok) {
     return { error: photoPersistence.error };
@@ -105,7 +106,7 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
         ...parsed.data,
         measuredAt: new Date(parsed.data.measuredAt),
         photoPath: photoPersistence.photoPath,
-        ...(photoPersistence.photoData && photoPersistence.photoMimeType
+        ...(photoPersistence.source === 'embedded'
           ? {
               photoData: toPrismaBytes(photoPersistence.photoData),
               photoMimeType: photoPersistence.photoMimeType
@@ -120,7 +121,7 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
         ...parsed.data,
         measuredAt: new Date(parsed.data.measuredAt),
         photoPath: photoPersistence.photoPath,
-        ...(photoPersistence.photoData && photoPersistence.photoMimeType
+        ...(photoPersistence.source === 'embedded'
           ? {
               photoData: toPrismaBytes(photoPersistence.photoData),
               photoMimeType: photoPersistence.photoMimeType
