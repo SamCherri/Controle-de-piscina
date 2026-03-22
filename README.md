@@ -53,11 +53,11 @@ Sistema web completo para operação de piscinas em condomínios, consolidado a 
 
 ### Autenticação e proteção
 
-A autenticação foi consolidada em três camadas para evitar mistura de responsabilidades:
+A autenticação foi consolidada em três camadas para evitar mistura de responsabilidades, com bootstrap resiliente do administrador padrão no startup e também na primeira tentativa real de login:
 
 - `lib/password.ts`: hash e verificação de senha.
 - `lib/session.ts`: assinatura, leitura e limpeza da sessão JWT em cookie.
-- `lib/auth.ts`: autenticação do usuário e proteção de rotas/pontos de API.
+- `lib/auth.ts`: autenticação do usuário, criação sob demanda do admin padrão e proteção de rotas/pontos de API.
 
 Proteções preservadas:
 
@@ -122,6 +122,9 @@ Copie `.env.example` para `.env`.
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/controle_de_piscina?schema=public"
 AUTH_SECRET="change-this-secret-in-production"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+DEFAULT_ADMIN_EMAIL="admin@piscina.com"
+DEFAULT_ADMIN_PASSWORD="admin123"
+DEFAULT_ADMIN_NAME="Administrador"
 ```
 
 ### Descrição
@@ -129,6 +132,9 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 - `DATABASE_URL`: conexão PostgreSQL usada pelo Prisma.
 - `AUTH_SECRET`: segredo usado para assinar a sessão JWT.
 - `NEXT_PUBLIC_APP_URL`: base pública usada na geração dos QR Codes.
+- `DEFAULT_ADMIN_EMAIL`: e-mail do administrador padrão criado automaticamente.
+- `DEFAULT_ADMIN_PASSWORD`: senha do administrador padrão criado automaticamente.
+- `DEFAULT_ADMIN_NAME`: nome exibido para o administrador padrão.
 
 ## Instalação local
 
@@ -148,10 +154,12 @@ A aplicação ficará disponível em:
 
 ## Credenciais iniciais
 
-Criadas pelo seed:
+Criadas pelo seed e também pelo bootstrap automático caso o banco ainda não tenha administrador:
 
 - **E-mail:** `admin@piscina.com`
 - **Senha:** `admin123`
+
+Você também pode sobrescrever essas credenciais definindo `DEFAULT_ADMIN_EMAIL`, `DEFAULT_ADMIN_PASSWORD` e `DEFAULT_ADMIN_NAME` no ambiente antes de iniciar a aplicação.
 
 ## Seed inicial
 

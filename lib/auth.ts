@@ -1,10 +1,14 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { verifyPassword } from '@/lib/password';
+import { ensureDefaultAdminUser } from '@/lib/default-admin';
 import { clearSession, getSession } from '@/lib/session';
 
 export async function authenticateUser(email: string, password: string) {
-  const user = await prisma.adminUser.findUnique({ where: { email } });
+  await ensureDefaultAdminUser();
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await prisma.adminUser.findUnique({ where: { email: normalizedEmail } });
   if (!user) {
     return null;
   }
