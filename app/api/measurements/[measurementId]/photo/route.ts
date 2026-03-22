@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import { extname } from 'node:path';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { normalizeLegacyPhotoPath, resolveLegacyPhotoFilePath } from '@/lib/uploads';
+import { normalizeLegacyPhotoPath, resolveLegacyPhotoFilePath, resolveMeasurementPhotoPersistence, toPrismaBytes } from '@/lib/uploads';
 
 const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -35,6 +35,28 @@ export async function GET(request: Request, { params }: { params: { measurementI
   const legacyPhotoPath = normalizeLegacyPhotoPath(measurement.photoPath);
   if (!legacyPhotoPath) {
     return NextResponse.json({ error: 'Nenhuma foto disponível para esta medição.' }, { status: 404 });
+  }
+
+  const persistedLegacyPhoto = await resolveMeasurementPhotoPersistence({
+    photoPath: legacyPhotoPath
+  });
+  if (persistedLegacyPhoto.ok && persistedLegacyPhoto.photoData && persistedLegacyPhoto.photoMimeType) {
+    await prisma.measurement.update({
+      where: { id: params.measurementId },
+      data: {
+        photoData: toPrismaBytes(persistedLegacyPhoto.photoData),
+        photoMimeType: persistedLegacyPhoto.photoMimeType,
+        photoPath: null
+      }
+    });
+
+    return new NextResponse(toPrismaBytes(persistedLegacyPhoto.photoData), {
+      status: 200,
+      headers: {
+        'Content-Type': persistedLegacyPhoto.photoMimeType,
+        'Cache-Control': 'public, max-age=31536000, immutable'
+      }
+    });
   }
 
   if (/^https?:\/\//i.test(legacyPhotoPath) || legacyPhotoPath.startsWith('data:')) {

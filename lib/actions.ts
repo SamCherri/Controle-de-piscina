@@ -6,7 +6,7 @@ import { authenticateUser, requireSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createSession } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
-import { prepareImageUpload } from '@/lib/uploads';
+import { prepareImageUpload, resolveMeasurementPhotoPersistence, toPrismaBytes } from '@/lib/uploads';
 import { slugify } from '@/lib/utils';
 import { condominiumSchema, loginSchema, measurementSchema, poolSchema } from '@/lib/validators';
 
@@ -88,10 +88,14 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
     return { error: upload.error };
   }
 
-  const hasNewPhoto = Boolean(upload.buffer && upload.mimeType);
-  const photoPath = hasNewPhoto ? null : parsed.data.photoPath;
-  const photoData = hasNewPhoto ? upload.buffer : undefined;
-  const photoMimeType = hasNewPhoto ? upload.mimeType : undefined;
+  const photoPersistence = await resolveMeasurementPhotoPersistence({
+    photoPath: parsed.data.photoPath,
+    upload
+  });
+  if (!photoPersistence.ok) {
+    return { error: photoPersistence.error };
+  }
+
   const statuses = computeMeasurementStatuses(pool, parsed.data);
 
   if (parsed.data.id) {
@@ -100,8 +104,13 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
       data: {
         ...parsed.data,
         measuredAt: new Date(parsed.data.measuredAt),
-        photoPath,
-        ...(hasNewPhoto ? { photoData, photoMimeType } : {}),
+        photoPath: photoPersistence.photoPath,
+        ...(photoPersistence.photoData && photoPersistence.photoMimeType
+          ? {
+              photoData: toPrismaBytes(photoPersistence.photoData),
+              photoMimeType: photoPersistence.photoMimeType
+            }
+          : {}),
         ...statuses
       }
     });
@@ -110,8 +119,13 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
       data: {
         ...parsed.data,
         measuredAt: new Date(parsed.data.measuredAt),
-        photoPath,
-        ...(hasNewPhoto ? { photoData, photoMimeType } : {}),
+        photoPath: photoPersistence.photoPath,
+        ...(photoPersistence.photoData && photoPersistence.photoMimeType
+          ? {
+              photoData: toPrismaBytes(photoPersistence.photoData),
+              photoMimeType: photoPersistence.photoMimeType
+            }
+          : {}),
         ...statuses
       }
     });
