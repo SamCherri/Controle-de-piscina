@@ -45,9 +45,5 @@ export async function GET(_request: Request, { params }: { params: { measurement
     });
   }
 
-  if (legacyPhoto.kind === 'redirect') {
-    return NextResponse.redirect(legacyPhoto.location);
-  }
-
   return NextResponse.json({ error: legacyPhoto.error }, { status: 404 });
 }

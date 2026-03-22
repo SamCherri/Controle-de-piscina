@@ -21,8 +21,6 @@ const MIME_TYPE_BY_EXTENSION: Partial<Record<string, AllowedUploadMimeType>> = {
   '.webp': 'image/webp'
 };
 
-type LegacyPhotoKind = 'external' | 'local';
-
 type EmbeddedPhotoResult = {
   ok: true;
   kind: 'embedded';
@@ -34,9 +32,8 @@ type EmbeddedPhotoResult = {
 type PreservedLegacyPhotoResult = {
   ok: true;
   kind: 'preserved-legacy';
-  legacyKind: LegacyPhotoKind;
   photoPath: string;
-  reason: 'unreachable' | 'download-failed';
+  reason: 'unreachable';
 };
 
 type NoPhotoResult = {
@@ -62,10 +59,6 @@ export type MeasurementPhotoDeliveryResult =
       photoData: Buffer;
       photoMimeType: AllowedUploadMimeType;
       shouldPersistToDatabase: boolean;
-    }
-  | {
-      kind: 'redirect';
-      location: string;
     }
   | {
       kind: 'missing';
@@ -304,20 +297,6 @@ export async function resolveMeasurementPhotoPersistence({
 
   if (/^https?:\/\//i.test(normalizedPhotoPath)) {
     const recoveredExternalPhoto = await persistExternalPhoto(normalizedPhotoPath);
-    if (recoveredExternalPhoto.ok) {
-      return recoveredExternalPhoto;
-    }
-
-    if (onRecoveryFailure === 'preserve-legacy-path' && recoveredExternalPhoto.error !== 'Host da foto externa não é permitido.') {
-      return {
-        ok: true,
-        kind: 'preserved-legacy',
-        legacyKind: 'external',
-        photoPath: normalizedPhotoPath,
-        reason: 'download-failed'
-      };
-    }
-
     return recoveredExternalPhoto;
   }
 
@@ -330,7 +309,6 @@ export async function resolveMeasurementPhotoPersistence({
     return {
       ok: true,
       kind: 'preserved-legacy',
-      legacyKind: 'local',
       photoPath: normalizedPhotoPath,
       reason: 'unreachable'
     };
@@ -359,24 +337,14 @@ export async function resolveMeasurementPhotoDelivery(photoPath?: string | null)
 
   if (/^https?:\/\//i.test(normalizedPhotoPath)) {
     const recoveredExternalPhoto = await persistExternalPhoto(normalizedPhotoPath);
-    if (recoveredExternalPhoto.ok) {
-      return {
-        kind: 'embedded',
-        photoData: recoveredExternalPhoto.photoData,
-        photoMimeType: recoveredExternalPhoto.photoMimeType,
-        shouldPersistToDatabase: true
-      };
-    }
-
-    const safeUrl = await ensureSafeExternalPhotoUrl(normalizedPhotoPath);
-    if (!safeUrl.ok) {
-      return { kind: 'missing', error: safeUrl.error };
-    }
-
-    return {
-      kind: 'redirect',
-      location: safeUrl.url
-    };
+    return recoveredExternalPhoto.ok
+      ? {
+          kind: 'embedded',
+          photoData: recoveredExternalPhoto.photoData,
+          photoMimeType: recoveredExternalPhoto.photoMimeType,
+          shouldPersistToDatabase: true
+        }
+      : { kind: 'missing', error: recoveredExternalPhoto.error };
   }
 
   const recoveredLocalPhoto = await persistLegacyLocalPhoto(normalizedPhotoPath);
