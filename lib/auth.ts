@@ -3,13 +3,30 @@ import { prisma } from '@/lib/db';
 import { verifyPassword } from '@/lib/password';
 import { clearSession, getSession } from '@/lib/session';
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
 export async function authenticateUser(email: string, password: string) {
-  const user = await prisma.adminUser.findUnique({ where: { email } });
+  const normalizedEmail = normalizeEmail(email);
+  const user = await prisma.adminUser.findUnique({ where: { email: normalizedEmail } });
+
+  console.info('[auth] admin lookup result', {
+    email: normalizedEmail,
+    foundUser: Boolean(user)
+  });
+
   if (!user) {
     return null;
   }
 
   const valid = await verifyPassword(password, user.passwordHash);
+
+  console.info('[auth] password verification result', {
+    email: normalizedEmail,
+    passwordMatches: valid
+  });
+
   if (!valid) {
     return null;
   }
