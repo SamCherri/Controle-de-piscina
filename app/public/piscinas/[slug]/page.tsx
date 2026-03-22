@@ -36,6 +36,7 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
     },
     orderBy: { measuredAt: 'desc' }
   });
+
   const photoMeasurement = latestPhotoMeasurement ?? latest;
   const latestPhoto = getMeasurementPhotoState(photoMeasurement);
   const photoRecencyMessage = getMeasurementPhotoRecencyMessage({
@@ -43,6 +44,8 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
     photoMeasurement,
     formatter: value => format(value, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
   });
+  const photoSrc = latestPhoto.kind === 'missing' ? undefined : latestPhoto.src;
+  const photoCacheKey = `${photoMeasurement.measuredAt.getTime()}-${photoMeasurement.updatedAt.getTime()}`;
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50">
@@ -67,7 +70,16 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
             </div>
             <div>
               <div className="space-y-3">
-                <MeasurementPhoto src={latestPhoto.kind === 'missing' ? undefined : latestPhoto.src} alt={pool.name} width={1000} height={700} cacheKey={photoMeasurement.updatedAt.getTime()} className="h-full min-h-[280px] w-full rounded-[28px] object-cover" fallbackClassName="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-white/10 px-6 text-center text-sm text-brand-50/70" missingMessage="A foto desta medição não pôde ser carregada nesta página." />
+                <MeasurementPhoto
+                  src={photoSrc}
+                  alt={pool.name}
+                  width={1000}
+                  height={700}
+                  cacheKey={photoCacheKey}
+                  className="h-full min-h-[280px] w-full rounded-[28px] object-cover"
+                  fallbackClassName="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-white/10 px-6 text-center text-sm text-brand-50/70"
+                  missingMessage="A foto desta medição não pôde ser carregada nesta página."
+                />
                 {photoRecencyMessage ? <PhotoStorageAlert message={photoRecencyMessage} tone="info" /> : null}
                 {latestPhoto.warning ? <PhotoStorageAlert message={latestPhoto.warning} tone="info" /> : null}
               </div>

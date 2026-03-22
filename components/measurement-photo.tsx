@@ -53,7 +53,12 @@ export function MeasurementPhoto({
       <div className={fallbackClassName}>
         <div className="space-y-2">
           <p>{missingMessage}</p>
-          <a href={resolvedSrc} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-4">
+          <a
+            href={resolvedSrc}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium underline underline-offset-4"
+          >
             Abrir foto diretamente
           </a>
         </div>
@@ -70,6 +75,7 @@ export function MeasurementPhoto({
       height={height}
       className={className}
       decoding="async"
+      loading="eager"
       fetchPriority="high"
       onError={() => setHasError(true)}
     />

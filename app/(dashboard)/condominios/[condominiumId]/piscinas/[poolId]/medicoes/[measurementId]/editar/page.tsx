@@ -16,6 +16,8 @@ export default async function EditMeasurementPage({ params }: { params: { condom
 
   const measuredAt = new Date(measurement.measuredAt.getTime() - measurement.measuredAt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   const photo = getMeasurementPhotoState(measurement);
+  const photoSrc = photo.kind === 'missing' ? undefined : photo.src;
+  const photoCacheKey = `${measurement.measuredAt.getTime()}-${measurement.updatedAt.getTime()}`;
 
   return (
     <>
@@ -27,11 +29,11 @@ export default async function EditMeasurementPage({ params }: { params: { condom
             <p className="mt-1 text-sm text-slate-500">Se esta foto for do armazenamento legado, reenviar o arquivo nesta edição grava a imagem no banco e elimina o risco de ela sumir após deploy/restart.</p>
           </div>
           <MeasurementPhoto
-            src={photo.kind === 'missing' ? undefined : photo.src}
+            src={photoSrc}
             alt={measurement.pool.name}
             width={900}
             height={650}
-            cacheKey={measurement.updatedAt.getTime()}
+            cacheKey={photoCacheKey}
             className="h-auto w-full rounded-2xl object-cover"
             fallbackClassName="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400"
             emptyMessage="Esta medição não possui foto salva."
