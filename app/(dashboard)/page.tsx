@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   const condominiums = await prisma.condominium.findMany({
     include: {
