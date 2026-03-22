@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireApiSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { resolveMeasurementPhotoPersistence } from '@/lib/measurement-photo-persistence';
 import { unauthorizedJsonResponse } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
+import { toPrismaBytes } from '@/lib/uploads';
 import { measurementSchema } from '@/lib/validators';
 
 export async function GET(request: Request) {
@@ -36,12 +38,26 @@ export async function POST(request: Request) {
   const pool = await prisma.pool.findUnique({ where: { id: parsed.data.poolId } });
   if (!pool) return NextResponse.json({ error: 'Piscina não encontrada.' }, { status: 404 });
 
+  const photoPersistence = await resolveMeasurementPhotoPersistence({
+    photoPath: parsed.data.photoPath
+  });
+  if (!photoPersistence.ok) {
+    return NextResponse.json({ error: photoPersistence.error }, { status: 400 });
+  }
+
   const statuses = computeMeasurementStatuses(pool, parsed.data);
 
   const measurement = await prisma.measurement.create({
     data: {
       ...parsed.data,
       measuredAt: new Date(parsed.data.measuredAt),
+      photoPath: photoPersistence.kind === 'preserved-legacy' ? photoPersistence.photoPath : null,
+      ...(photoPersistence.kind === 'embedded'
+        ? {
+            photoData: toPrismaBytes(photoPersistence.photoData),
+            photoMimeType: photoPersistence.photoMimeType
+          }
+        : {}),
       ...statuses
     }
   });

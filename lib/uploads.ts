@@ -17,6 +17,37 @@ export type MeasurementPhotoState =
   | { kind: 'legacy-local'; src: string; warning: string }
   | { kind: 'missing'; src?: undefined; warning?: undefined };
 
+export type AllowedUploadMimeType = (typeof ALLOWED_UPLOAD_MIME_TYPES)[number];
+
+export type PreparedImageUpload =
+  | { ok: true; fileName?: string; mimeType?: AllowedUploadMimeType; buffer?: Buffer }
+  | { ok: false; error: string };
+
+const EXTENSION_BY_MIME_TYPE: Record<AllowedUploadMimeType, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp'
+};
+
+export function toPrismaBytes(buffer: Buffer) {
+  return new Uint8Array(buffer);
+}
+
+export function normalizeMimeType(mimeType?: string | null) {
+  const normalizedMimeType = mimeType?.split(';')[0]?.trim().toLowerCase();
+  if (!normalizedMimeType) {
+    return undefined;
+  }
+
+  return ALLOWED_UPLOAD_MIME_TYPES.includes(normalizedMimeType as AllowedUploadMimeType)
+    ? (normalizedMimeType as AllowedUploadMimeType)
+    : undefined;
+}
+
+export function getFileExtensionForMimeType(mimeType: AllowedUploadMimeType) {
+  return EXTENSION_BY_MIME_TYPE[mimeType];
+}
+
 export function validateImageUpload(file: File | null) {
   if (!file || file.size === 0) {
     return { ok: true as const };
@@ -26,8 +57,8 @@ export function validateImageUpload(file: File | null) {
     return { ok: false as const, error: 'A imagem deve ter no máximo 5 MB.' };
   }
 
-  const mimeType = file.type.toLowerCase();
-  if (!ALLOWED_UPLOAD_MIME_TYPES.includes(mimeType as (typeof ALLOWED_UPLOAD_MIME_TYPES)[number])) {
+  const mimeType = normalizeMimeType(file.type);
+  if (!mimeType) {
     return { ok: false as const, error: 'Envie uma imagem JPG, PNG ou WEBP.' };
   }
 
@@ -37,6 +68,22 @@ export function validateImageUpload(file: File | null) {
   }
 
   return { ok: true as const, extension, mimeType };
+}
+
+function validateImageFileName(fileName: string, mimeType: AllowedUploadMimeType) {
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  const expectedExtension = EXTENSION_BY_MIME_TYPE[mimeType];
+
+  if (!extension || !ALLOWED_UPLOAD_EXTENSIONS.includes(extension as (typeof ALLOWED_UPLOAD_EXTENSIONS)[number])) {
+    return { ok: false as const, error: 'A extensão do arquivo deve ser JPG, PNG ou WEBP.' };
+  }
+
+  const normalizedExtension = extension === 'jpeg' ? 'jpg' : extension;
+  if (normalizedExtension !== expectedExtension) {
+    return { ok: false as const, error: 'O conteúdo da imagem não corresponde ao tipo do arquivo enviado.' };
+  }
+
+  return { ok: true as const };
 }
 
 async function inspectImageBuffer(buffer: Buffer) {
@@ -54,6 +101,66 @@ async function inspectImageBuffer(buffer: Buffer) {
   } catch {
     return { ok: false as const, error: 'Arquivo de imagem inválido ou corrompido.' };
   }
+}
+
+export async function prepareImageBuffer({
+  buffer,
+  mimeType,
+  fileName
+}: {
+  buffer: Buffer;
+  mimeType?: string | null;
+  fileName: string;
+}): Promise<PreparedImageUpload> {
+  if (buffer.length === 0) {
+    return { ok: false, error: 'Nenhum arquivo enviado.' };
+  }
+
+  if (buffer.length > MAX_UPLOAD_SIZE_BYTES) {
+    return { ok: false, error: 'A imagem deve ter no máximo 5 MB.' };
+  }
+
+  const normalizedMimeType = normalizeMimeType(mimeType);
+  if (!normalizedMimeType) {
+    return { ok: false, error: 'Envie uma imagem JPG, PNG ou WEBP.' };
+  }
+
+  const nameValidation = validateImageFileName(fileName, normalizedMimeType);
+  if (!nameValidation.ok) {
+    return nameValidation;
+  }
+
+  const inspectedImage = await inspectImageBuffer(buffer);
+  if (!inspectedImage.ok) {
+    return inspectedImage;
+  }
+
+  const detectedFormat = inspectedImage.metadata.format === 'jpeg' ? 'jpg' : inspectedImage.metadata.format;
+  const expectedFormat = EXTENSION_BY_MIME_TYPE[normalizedMimeType];
+  if (detectedFormat !== expectedFormat) {
+    return { ok: false, error: 'O conteúdo da imagem não corresponde ao tipo do arquivo enviado.' };
+  }
+
+  return {
+    ok: true,
+    fileName,
+    mimeType: normalizedMimeType,
+    buffer
+  };
+}
+
+export async function prepareImageUpload(file: File | null): Promise<PreparedImageUpload> {
+  const validation = validateImageUpload(file);
+  if (!validation.ok) {
+    return validation;
+  }
+
+  if (!file || file.size === 0) {
+    return { ok: true, fileName: undefined, mimeType: undefined, buffer: undefined };
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return prepareImageBuffer({ buffer, mimeType: validation.mimeType, fileName: file.name });
 }
 
 export function normalizeLegacyPhotoPath(photoPath?: string | null) {
@@ -88,43 +195,6 @@ export function resolveLegacyPhotoFilePath(photoPath?: string | null) {
   return absolutePath;
 }
 
-export async function prepareImageUpload(file: File | null) {
-  const validation = validateImageUpload(file);
-  if (!validation.ok) {
-    return validation;
-  }
-
-  if (!file || file.size === 0) {
-    return { ok: true as const, fileName: undefined, mimeType: undefined, buffer: undefined };
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const inspectedImage = await inspectImageBuffer(buffer);
-  if (!inspectedImage.ok) {
-    return inspectedImage;
-  }
-
-  const { extension, mimeType } = validation;
-  if (!extension || !mimeType) {
-    return { ok: false as const, error: 'Falha ao validar o arquivo enviado.' };
-  }
-
-  const detectedFormat = inspectedImage.metadata.format === 'jpeg' ? 'jpg' : inspectedImage.metadata.format;
-  const normalizedExtension = extension === 'jpeg' ? 'jpg' : extension;
-  const normalizedMimeType = mimeType === 'image/jpeg' ? 'jpg' : mimeType.replace('image/', '');
-
-  if (detectedFormat !== normalizedExtension || detectedFormat !== normalizedMimeType) {
-    return { ok: false as const, error: 'O conteúdo da imagem não corresponde ao tipo do arquivo enviado.' };
-  }
-
-  return {
-    ok: true as const,
-    fileName: file.name,
-    mimeType,
-    buffer
-  };
-}
-
 export function getMeasurementPhotoState(measurement: MeasurementPhotoRecord): MeasurementPhotoState {
   if (measurement.photoData && measurement.photoData.length > 0) {
     return {
@@ -138,11 +208,19 @@ export function getMeasurementPhotoState(measurement: MeasurementPhotoRecord): M
     return { kind: 'missing' };
   }
 
-  if (/^https?:\/\//i.test(normalizedLegacyPath) || normalizedLegacyPath.startsWith('data:')) {
+  if (/^https?:\/\//i.test(normalizedLegacyPath)) {
     return {
       kind: 'legacy-external',
       src: `/api/measurements/${measurement.id}/photo`,
       warning: 'Esta foto ainda depende de uma origem externa legada. Se o link antigo sair do ar, será necessário reenviar a imagem para mantê-la disponível.'
+    };
+  }
+
+  if (normalizedLegacyPath.startsWith('data:')) {
+    return {
+      kind: 'legacy-external',
+      src: `/api/measurements/${measurement.id}/photo`,
+      warning: 'Esta foto usa um formato legado data URL. Reenviar a imagem grava a foto definitivamente no banco.'
     };
   }
 
