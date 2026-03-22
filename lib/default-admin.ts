@@ -1,9 +1,6 @@
 import { prisma } from '@/lib/db';
 import { hashPassword } from '@/lib/password';
-
-const DEFAULT_ADMIN_EMAIL = 'admin@piscina.com';
-const DEFAULT_ADMIN_PASSWORD = 'admin123';
-const DEFAULT_ADMIN_NAME = 'Administrador';
+import { defaultAdminCredentials } from '@/lib/default-admin-config';
 
 declare global {
   var defaultAdminBootstrapPromise: Promise<void> | undefined;
@@ -11,7 +8,7 @@ declare global {
 
 async function createDefaultAdminUser() {
   const existingAdmin = await prisma.adminUser.findUnique({
-    where: { email: DEFAULT_ADMIN_EMAIL },
+    where: { email: defaultAdminCredentials.email },
     select: { id: true }
   });
 
@@ -19,14 +16,14 @@ async function createDefaultAdminUser() {
     return;
   }
 
-  const passwordHash = await hashPassword(DEFAULT_ADMIN_PASSWORD);
+  const passwordHash = await hashPassword(defaultAdminCredentials.password);
 
   await prisma.adminUser.upsert({
-    where: { email: DEFAULT_ADMIN_EMAIL },
+    where: { email: defaultAdminCredentials.email },
     update: {},
     create: {
-      email: DEFAULT_ADMIN_EMAIL,
-      name: DEFAULT_ADMIN_NAME,
+      email: defaultAdminCredentials.email,
+      name: defaultAdminCredentials.name,
       passwordHash
     }
   });
@@ -42,9 +39,3 @@ export async function ensureDefaultAdminUser() {
 
   await global.defaultAdminBootstrapPromise;
 }
-
-export const defaultAdminCredentials = {
-  email: DEFAULT_ADMIN_EMAIL,
-  password: DEFAULT_ADMIN_PASSWORD,
-  name: DEFAULT_ADMIN_NAME
-};

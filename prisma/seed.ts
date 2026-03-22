@@ -1,18 +1,19 @@
 import { PrismaClient } from '@prisma/client';
+import { defaultAdminCredentials as defaultAdmin } from '../lib/default-admin-config';
 import { hashPassword } from '../lib/password';
 import { computeMeasurementStatuses } from '../lib/status';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const passwordHash = await hashPassword('admin123');
+  const passwordHash = await hashPassword(defaultAdmin.password);
 
   await prisma.adminUser.upsert({
-    where: { email: 'admin@piscina.com' },
-    update: { name: 'Administrador', passwordHash },
+    where: { email: defaultAdmin.email },
+    update: { name: defaultAdmin.name, passwordHash },
     create: {
-      name: 'Administrador',
-      email: 'admin@piscina.com',
+      name: defaultAdmin.name,
+      email: defaultAdmin.email,
       passwordHash
     }
   });
