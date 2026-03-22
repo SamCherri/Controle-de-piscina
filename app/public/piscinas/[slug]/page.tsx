@@ -50,7 +50,7 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
             </div>
             <div>
               <div className="space-y-3">
-                <MeasurementPhoto src={latestPhoto.kind === 'missing' ? undefined : latestPhoto.src} alt={pool.name} width={1000} height={700} cacheKey={latest.measuredAt.getTime()} className="h-full min-h-[280px] w-full rounded-[28px] object-cover" fallbackClassName="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-white/10 px-6 text-center text-sm text-brand-50/70" missingMessage="A foto desta medição não pôde ser carregada nesta página." />
+                <MeasurementPhoto src={latestPhoto.kind === 'missing' ? undefined : latestPhoto.src} alt={pool.name} width={1000} height={700} cacheKey={latest.updatedAt.getTime()} className="h-full min-h-[280px] w-full rounded-[28px] object-cover" fallbackClassName="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-white/10 px-6 text-center text-sm text-brand-50/70" missingMessage="A foto desta medição não pôde ser carregada nesta página." />
                 {latestPhoto.warning ? <PhotoStorageAlert message={latestPhoto.warning} tone="info" /> : null}
               </div>
             </div>

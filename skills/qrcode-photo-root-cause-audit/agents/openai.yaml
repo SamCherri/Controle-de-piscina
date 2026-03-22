@@ -1,0 +1,3 @@
+display_name: QR Photo Audit
+short_description: Audita QR, página pública e foto
+default_prompt: Audite ponta a ponta o fluxo QR code -> página pública -> foto da medição e identifique a causa raiz com evidências.

@@ -146,7 +146,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
             </div>
             <div className="card space-y-3">
               <h3 className="text-lg font-semibold text-slate-900">Foto mais recente</h3>
-              <MeasurementPhoto src={latestPhoto.kind === 'missing' ? undefined : latestPhoto.src} alt={pool.name} width={800} height={600} cacheKey={latest.measuredAt.getTime()} className="h-auto w-full rounded-2xl object-cover" fallbackClassName="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400" emptyMessage="Nenhuma foto enviada até o momento." />
+              <MeasurementPhoto src={latestPhoto.kind === 'missing' ? undefined : latestPhoto.src} alt={pool.name} width={800} height={600} cacheKey={latest.updatedAt.getTime()} className="h-auto w-full rounded-2xl object-cover" fallbackClassName="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400" emptyMessage="Nenhuma foto enviada até o momento." />
               {latestPhoto.kind !== 'missing' && latestPhoto.warning ? <PhotoStorageAlert message={latestPhoto.warning} /> : null}
             </div>
           </aside>
