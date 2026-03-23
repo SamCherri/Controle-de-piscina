@@ -5,10 +5,11 @@ export type LoginHelpInput = {
     email: string;
     name: string;
   };
+  productionOverride?: boolean;
 };
 
-export function getLoginHelpContent({ defaultAdmin }: LoginHelpInput) {
-  const developmentMode = !isProduction();
+export function getLoginHelpContent({ defaultAdmin, productionOverride }: LoginHelpInput) {
+  const developmentMode = !(productionOverride ?? isProduction());
 
   return {
     title: developmentMode ? 'Acesso administrativo inicial (somente desenvolvimento)' : 'Acesso administrativo',

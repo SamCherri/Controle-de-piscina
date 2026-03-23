@@ -8,6 +8,8 @@ import { AUTH_COOKIE_NAME } from '@/lib/auth/config';
 import { signSessionToken } from '@/lib/session-token';
 import { getLoginHelpContent } from '@/lib/auth/login-help';
 import { getLoginFailureStatus } from '@/lib/auth/login-http';
+import { validateAdminUserDeletion, validateAdminUserRoleChange } from '@/lib/auth/admin-user-guards';
+import { createAdminUserSchema, resetAdminUserPasswordSchema, updateAdminUserSchema } from '@/lib/validators';
 
 function createLoginDeps(user: AuthUserRecord | null, now = new Date('2026-03-23T12:00:00Z')) {
   const state = {
@@ -271,22 +273,104 @@ test('login bloqueado mapeia para status HTTP 429', async () => {
 });
 
 test('ajuda da UI de login não expõe dados sensíveis em produção', () => {
-  const originalNodeEnv = process.env.NODE_ENV;
-  Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', configurable: true });
+  const help = getLoginHelpContent({
+    defaultAdmin: {
+      email: 'admin@piscina.com',
+      name: 'Administrador'
+    },
+    productionOverride: true
+  });
 
-  try {
-    const help = getLoginHelpContent({
-      defaultAdmin: {
-        email: 'admin@piscina.com',
-        name: 'Administrador'
-      }
-    });
+  assert.equal(help.showDevelopmentFillAction, false);
+  assert.equal(help.emailLabel, null);
+  assert.equal(help.nameLabel, null);
+  assert.doesNotMatch(help.description, /senha/i);
+});
 
-    assert.equal(help.showDevelopmentFillAction, false);
-    assert.equal(help.emailLabel, null);
-    assert.equal(help.nameLabel, null);
-    assert.doesNotMatch(help.description, /senha/i);
-  } finally {
-    Object.defineProperty(process.env, 'NODE_ENV', { value: originalNodeEnv, configurable: true });
-  }
+
+test('regras impedem excluir a própria conta e o último admin', () => {
+  assert.equal(
+    validateAdminUserDeletion({
+      targetUserId: 'u1',
+      currentUserId: 'u1',
+      targetRole: 'admin',
+      adminCount: 2
+    }),
+    'Não é permitido excluir a própria conta por esta tela.'
+  );
+
+  assert.equal(
+    validateAdminUserDeletion({
+      targetUserId: 'u2',
+      currentUserId: 'u1',
+      targetRole: 'admin',
+      adminCount: 1
+    }),
+    'Não é permitido excluir o último usuário com role admin.'
+  );
+
+  assert.equal(
+    validateAdminUserDeletion({
+      targetUserId: 'u2',
+      currentUserId: 'u1',
+      targetRole: 'operator',
+      adminCount: 1
+    }),
+    null
+  );
+});
+
+test('regras impedem auto-rebaixamento e remoção do último admin', () => {
+  assert.equal(
+    validateAdminUserRoleChange({
+      targetUserId: 'u1',
+      currentUserId: 'u1',
+      currentRole: 'admin',
+      nextRole: 'operator',
+      adminCount: 2
+    }),
+    'Não é permitido remover o próprio acesso administrativo por esta tela.'
+  );
+
+  assert.equal(
+    validateAdminUserRoleChange({
+      targetUserId: 'u2',
+      currentUserId: 'u1',
+      currentRole: 'admin',
+      nextRole: 'operator',
+      adminCount: 1
+    }),
+    'Não é permitido remover o role admin do último usuário administrativo.'
+  );
+});
+
+test('validators de usuário administrativo exigem dados seguros', () => {
+  assert.equal(createAdminUserSchema.safeParse({
+    name: 'Operador',
+    email: 'operador@teste.com',
+    password: 'Senha123',
+    confirmPassword: 'Senha123',
+    role: 'operator'
+  }).success, true);
+
+  assert.equal(updateAdminUserSchema.safeParse({
+    userId: 'u1',
+    name: 'Admin',
+    email: 'admin@teste.com',
+    role: 'admin'
+  }).success, true);
+
+  assert.equal(resetAdminUserPasswordSchema.safeParse({
+    userId: 'u1',
+    password: 'Senha123',
+    confirmPassword: 'Senha123'
+  }).success, true);
+
+  assert.equal(createAdminUserSchema.safeParse({
+    name: 'Operador',
+    email: 'invalido',
+    password: '123',
+    confirmPassword: '123',
+    role: 'hacker'
+  }).success, false);
 });

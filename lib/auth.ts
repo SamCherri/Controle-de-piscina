@@ -75,6 +75,16 @@ export async function changePassword(userId: string, newPasswordHash: string, re
   return user;
 }
 
+
+export async function requireAdminSession() {
+  const user = await requireSession();
+  if (user.role !== 'admin') {
+    redirect('/');
+  }
+
+  return user;
+}
+
 export async function requireSession() {
   const session = await getSession();
   if (!session) {

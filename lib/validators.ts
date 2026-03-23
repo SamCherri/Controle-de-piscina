@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PASSWORD_MIN_LENGTH } from '@/lib/auth/config';
+import { ADMIN_USER_ROLES } from '@/lib/auth/roles';
 
 const optionalTrimmedString = z.preprocess(
   value => (typeof value === 'string' ? value.trim() || undefined : value),
@@ -80,6 +81,46 @@ export const changePasswordSchema = z
     path: ['confirmPassword'],
     message: 'As senhas não coincidem.'
   });
+
+
+export const adminUserRoleSchema = z.enum(ADMIN_USER_ROLES, {
+  errorMap: () => ({ message: 'Selecione um role válido.' })
+});
+
+export const createAdminUserSchema = z
+  .object({
+    name: requiredTrimmedString(2, 'Informe o nome do usuário.'),
+    email: z.string().trim().toLowerCase().email('Informe um e-mail válido.'),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, 'Confirme a senha.'),
+    role: adminUserRoleSchema
+  })
+  .refine(data => data.password === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'As senhas não coincidem.'
+  });
+
+export const updateAdminUserSchema = z.object({
+  userId: z.string().min(1, 'Usuário inválido.'),
+  name: requiredTrimmedString(2, 'Informe o nome do usuário.'),
+  email: z.string().trim().toLowerCase().email('Informe um e-mail válido.'),
+  role: adminUserRoleSchema
+});
+
+export const resetAdminUserPasswordSchema = z
+  .object({
+    userId: z.string().min(1, 'Usuário inválido.'),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, 'Confirme a nova senha.')
+  })
+  .refine(data => data.password === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'As senhas não coincidem.'
+  });
+
+export const deleteAdminUserSchema = z.object({
+  userId: z.string().min(1, 'Usuário inválido.')
+});
 
 export const condominiumSchema = z.object({
   name: requiredTrimmedString(3, 'Informe o nome do condomínio.'),

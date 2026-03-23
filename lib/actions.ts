@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { changePassword, authenticateUser, requireSession } from '@/lib/auth';
+import { changePassword, authenticateUser, requireAdminSession, requireSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { resolveMeasurementPhotoPersistence } from '@/lib/measurement-photo-persistence';
 import { hashPassword, verifyPassword } from '@/lib/password';
@@ -10,13 +10,18 @@ import { createSession } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
 import { prepareImageUpload, toPrismaBytes } from '@/lib/uploads';
 import { slugify } from '@/lib/utils';
+import { validateAdminUserDeletion, validateAdminUserRoleChange } from '@/lib/auth/admin-user-guards';
 import {
   changePasswordSchema,
+  createAdminUserSchema,
+  deleteAdminUserSchema,
   condominiumSchema,
   forgotPasswordSchema,
   loginSchema,
   measurementSchema,
+  resetAdminUserPasswordSchema,
   poolSchema,
+  updateAdminUserSchema,
   resetPasswordSchema
 } from '@/lib/validators';
 import { getCurrentRequestMetadata } from '@/lib/auth/utils';
@@ -101,6 +106,145 @@ export async function forcePasswordChangeAction(_: ActionState, formData: FormDa
   });
 
   redirect('/');
+}
+
+
+
+export async function createAdminUserAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdminSession();
+
+  const parsed = createAdminUserSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+  }
+
+  const existingUser = await prisma.adminUser.findUnique({ where: { email: parsed.data.email } });
+  if (existingUser) {
+    return { error: 'Já existe um usuário com este e-mail.' };
+  }
+
+  const passwordHash = await hashPassword(parsed.data.password);
+  await prisma.adminUser.create({
+    data: {
+      name: parsed.data.name,
+      email: parsed.data.email,
+      passwordHash,
+      role: parsed.data.role,
+      mustChangePassword: false
+    }
+  });
+
+  revalidatePath('/usuarios');
+  redirect('/usuarios');
+}
+
+export async function updateAdminUserAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const currentUser = await requireAdminSession();
+
+  const parsed = updateAdminUserSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+  }
+
+  const targetUser = await prisma.adminUser.findUnique({
+    where: { id: parsed.data.userId },
+    select: { id: true, role: true, email: true }
+  });
+  if (!targetUser) {
+    return { error: 'Usuário não encontrado.' };
+  }
+
+  const conflictingUser = await prisma.adminUser.findUnique({ where: { email: parsed.data.email } });
+  if (conflictingUser && conflictingUser.id !== parsed.data.userId) {
+    return { error: 'Já existe um usuário com este e-mail.' };
+  }
+
+  const adminCount = await prisma.adminUser.count({ where: { role: 'admin' } });
+  const roleChangeError = validateAdminUserRoleChange({
+    targetUserId: parsed.data.userId,
+    currentUserId: currentUser.id,
+    currentRole: targetUser.role,
+    nextRole: parsed.data.role,
+    adminCount
+  });
+  if (roleChangeError) {
+    return { error: roleChangeError };
+  }
+
+  await prisma.adminUser.update({
+    where: { id: parsed.data.userId },
+    data: {
+      name: parsed.data.name,
+      email: parsed.data.email,
+      role: parsed.data.role
+    }
+  });
+
+  revalidatePath('/usuarios');
+  redirect('/usuarios');
+}
+
+export async function resetAdminUserPasswordAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdminSession();
+
+  const parsed = resetAdminUserPasswordSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+  }
+
+  const user = await prisma.adminUser.findUnique({ where: { id: parsed.data.userId } });
+  if (!user) {
+    return { error: 'Usuário não encontrado.' };
+  }
+
+  const passwordHash = await hashPassword(parsed.data.password);
+  await prisma.adminUser.update({
+    where: { id: parsed.data.userId },
+    data: {
+      passwordHash,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      mustChangePassword: true
+    }
+  });
+
+  revalidatePath('/usuarios');
+  redirect('/usuarios');
+}
+
+export async function deleteAdminUserAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const currentUser = await requireAdminSession();
+
+  const parsed = deleteAdminUserSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+  }
+
+  const user = await prisma.adminUser.findUnique({
+    where: { id: parsed.data.userId },
+    select: { id: true, role: true }
+  });
+  if (!user) {
+    return { error: 'Usuário não encontrado.' };
+  }
+
+  const adminCount = await prisma.adminUser.count({ where: { role: 'admin' } });
+  const deletionError = validateAdminUserDeletion({
+    targetUserId: user.id,
+    currentUserId: currentUser.id,
+    targetRole: user.role,
+    adminCount
+  });
+  if (deletionError) {
+    return { error: deletionError };
+  }
+
+  await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+  await prisma.authAuditLog.updateMany({ where: { userId: user.id }, data: { userId: null } });
+  await prisma.adminUser.delete({ where: { id: user.id } });
+
+  revalidatePath('/usuarios');
+  redirect('/usuarios');
 }
 
 export async function createCondominiumAction(_: ActionState, formData: FormData): Promise<ActionState> {
