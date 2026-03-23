@@ -14,13 +14,49 @@ enum PoolStatus {
 }
 
 model AdminUser {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         String   @default("admin")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                  String               @id @default(cuid())
+  name                String
+  email               String               @unique
+  passwordHash        String
+  role                String               @default("admin")
+  mustChangePassword  Boolean              @default(false)
+  lastLoginAt         DateTime?
+  failedLoginAttempts Int                  @default(0)
+  lockedUntil         DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  passwordResetTokens PasswordResetToken[]
+  authAuditLogs       AuthAuditLog[]
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+  user       AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([expiresAt])
+}
+
+model AuthAuditLog {
+  id        String    @id @default(cuid())
+  userId    String?
+  email     String
+  action    String
+  ip        String?
+  userAgent String?
+  success   Boolean
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  user      AdminUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
 }
 
 model Condominium {

@@ -13,7 +13,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Link href="/" className="text-lg font-semibold text-slate-900">Controle de Piscina</Link>
             <p className="text-sm text-slate-500">Olá, {user.name}. Faça os lançamentos operacionais da piscina.</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/usuarios" className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700">Usuários</Link>
             <Link href="/condominios/novo" className="rounded-2xl bg-brand-600 px-4 py-2 text-sm font-medium text-white">Novo condomínio</Link>
             <LogoutButton />
           </div>

@@ -4,19 +4,30 @@ import { hashPassword } from '../lib/password';
 import { computeMeasurementStatuses } from '../lib/status';
 
 const prisma = new PrismaClient();
+const usingFallbackDefaultPassword = defaultAdmin.password === 'admin123';
+const isProduction = process.env.NODE_ENV === 'production';
 
 async function main() {
-  const passwordHash = await hashPassword(defaultAdmin.password);
+  if (!isProduction || !usingFallbackDefaultPassword) {
+    const passwordHash = await hashPassword(defaultAdmin.password);
 
-  await prisma.adminUser.upsert({
-    where: { email: defaultAdmin.email },
-    update: { name: defaultAdmin.name, passwordHash },
-    create: {
-      name: defaultAdmin.name,
-      email: defaultAdmin.email,
-      passwordHash
-    }
-  });
+    await prisma.adminUser.upsert({
+      where: { email: defaultAdmin.email },
+      update: {
+        name: defaultAdmin.name,
+        passwordHash,
+        mustChangePassword: true
+      },
+      create: {
+        name: defaultAdmin.name,
+        email: defaultAdmin.email,
+        passwordHash,
+        mustChangePassword: true
+      }
+    });
+  } else {
+    console.warn('[seed] Usuário administrador padrão não foi criado em produção com senha fallback insegura. Configure DEFAULT_ADMIN_PASSWORD para habilitar o seed do admin inicial.');
+  }
 
   const condominium = await prisma.condominium.upsert({
     where: { slug: 'condominio-jardins-do-mar' },
