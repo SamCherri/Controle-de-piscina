@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { NextRequest } from 'next/server';
 import { performLoginAttempt, type AuthServiceDeps, type AuthUserRecord } from '@/lib/auth/service';
 import { issuePasswordReset, redeemPasswordReset, type PasswordResetServiceDeps, type PasswordResetTokenRecord, type PasswordResetUser } from '@/lib/auth/password-reset-service';
+import { middleware } from '@/middleware';
+import { AUTH_COOKIE_NAME } from '@/lib/auth/config';
+import { signSessionToken } from '@/lib/session-token';
+import { getLoginHelpContent } from '@/lib/auth/login-help';
+import { getLoginFailureStatus } from '@/lib/auth/login-http';
 
 function createLoginDeps(user: AuthUserRecord | null, now = new Date('2026-03-23T12:00:00Z')) {
   const state = {
@@ -191,4 +197,96 @@ test('reset com token inválido ou expirado falha', async () => {
   });
   const expiredResult = await redeemPasswordReset(expiredDeps, 'plain-token', 'novo-hash');
   assert.deepEqual(expiredResult, { ok: false, error: 'Token inválido ou expirado.' });
+});
+
+test('middleware trata token inválido como sessão ausente', async () => {
+  const request = new NextRequest('http://localhost:3000/', {
+    headers: {
+      cookie: `${AUTH_COOKIE_NAME}=token-invalido`
+    }
+  });
+
+  const response = await middleware(request);
+
+  assert.equal(response.status, 307);
+  assert.equal(response.headers.get('location'), 'http://localhost:3000/login');
+});
+
+test('middleware redireciona para troca obrigatória com token válido', async () => {
+  const token = await signSessionToken({
+    userId: 'u1',
+    email: 'admin@piscina.com',
+    name: 'Admin',
+    mustChangePassword: true
+  });
+  const request = new NextRequest('http://localhost:3000/', {
+    headers: {
+      cookie: `${AUTH_COOKIE_NAME}=${token}`
+    }
+  });
+
+  const response = await middleware(request);
+
+  assert.equal(response.status, 307);
+  assert.equal(response.headers.get('location'), 'http://localhost:3000/trocar-senha-obrigatoria');
+});
+
+test('middleware permite acesso normal com token válido sem troca obrigatória', async () => {
+  const token = await signSessionToken({
+    userId: 'u1',
+    email: 'admin@piscina.com',
+    name: 'Admin',
+    mustChangePassword: false
+  });
+  const request = new NextRequest('http://localhost:3000/', {
+    headers: {
+      cookie: `${AUTH_COOKIE_NAME}=${token}`
+    }
+  });
+
+  const response = await middleware(request);
+
+  assert.equal(response.headers.get('x-middleware-next'), '1');
+});
+
+test('login bloqueado mapeia para status HTTP 429', async () => {
+  const { deps } = createLoginDeps({
+    id: 'u1',
+    email: 'admin@piscina.com',
+    name: 'Admin',
+    passwordHash: 'senha123',
+    mustChangePassword: false,
+    failedLoginAttempts: 0,
+    lockedUntil: new Date('2026-03-23T12:15:00Z')
+  });
+
+  const result = await performLoginAttempt(deps, 'admin@piscina.com', 'senha123');
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.error, 'ACCOUNT_LOCKED');
+    assert.equal(getLoginFailureStatus(result.error), 429);
+  }
+  assert.equal(getLoginFailureStatus('INVALID_CREDENTIALS'), 401);
+});
+
+test('ajuda da UI de login não expõe dados sensíveis em produção', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', configurable: true });
+
+  try {
+    const help = getLoginHelpContent({
+      defaultAdmin: {
+        email: 'admin@piscina.com',
+        name: 'Administrador'
+      }
+    });
+
+    assert.equal(help.showDevelopmentFillAction, false);
+    assert.equal(help.emailLabel, null);
+    assert.equal(help.nameLabel, null);
+    assert.doesNotMatch(help.description, /senha/i);
+  } finally {
+    Object.defineProperty(process.env, 'NODE_ENV', { value: originalNodeEnv, configurable: true });
+  }
 });

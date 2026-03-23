@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { useFormState, useFormStatus } from 'react-dom';
 import { useState } from 'react';
 import { loginAction } from '@/lib/actions';
+import { getLoginHelpContent } from '@/lib/auth/login-help';
 
 type DefaultAdminCredentials = {
   email: string;
-  password: string;
+  password?: string;
   name: string;
 };
 
@@ -24,8 +25,18 @@ export function LoginForm({ defaultAdmin }: { defaultAdmin: DefaultAdminCredenti
   const [state, action] = useFormState(loginAction, {});
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const help = getLoginHelpContent({
+    defaultAdmin: {
+      email: defaultAdmin.email,
+      name: defaultAdmin.name
+    }
+  });
 
   function fillDefaultCredentials() {
+    if (!help.showDevelopmentFillAction || !defaultAdmin.password) {
+      return;
+    }
+
     setEmail(defaultAdmin.email);
     setPassword(defaultAdmin.password);
   }
@@ -63,22 +74,24 @@ export function LoginForm({ defaultAdmin }: { defaultAdmin: DefaultAdminCredenti
       <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <p className="font-semibold text-slate-900">Acesso administrativo inicial</p>
-            <p><strong>Nome:</strong> {defaultAdmin.name}</p>
-            <p><strong>E-mail:</strong> {defaultAdmin.email}</p>
-            <p><strong>Senha:</strong> {defaultAdmin.password}</p>
+            <p className="font-semibold text-slate-900">{help.title}</p>
+            <p>{help.description}</p>
+            {help.nameLabel ? <p><strong>Nome:</strong> {help.nameLabel}</p> : null}
+            {help.emailLabel ? <p><strong>E-mail:</strong> {help.emailLabel}</p> : null}
             <p className="text-xs text-amber-700">No primeiro login com senha temporária, o sistema exigirá a troca imediata da senha.</p>
           </div>
-          <button
-            type="button"
-            onClick={fillDefaultCredentials}
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-brand-300 hover:text-brand-700"
-          >
-            Preencher acesso padrão
-          </button>
+          {help.showDevelopmentFillAction ? (
+            <button
+              type="button"
+              onClick={fillDefaultCredentials}
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-brand-300 hover:text-brand-700"
+            >
+              Preencher acesso local
+            </button>
+          ) : null}
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          Se as variáveis <code>DEFAULT_ADMIN_EMAIL</code>, <code>DEFAULT_ADMIN_PASSWORD</code> ou <code>DEFAULT_ADMIN_NAME</code> estiverem configuradas, o sistema usa esses valores automaticamente ao criar o administrador inicial.
+          O administrador inicial pode ser provisionado pelas variáveis <code>DEFAULT_ADMIN_EMAIL</code>, <code>DEFAULT_ADMIN_PASSWORD</code> e <code>DEFAULT_ADMIN_NAME</code>. A senha nunca é exibida na interface.
         </p>
       </div>
       <SubmitButton />

@@ -3,6 +3,7 @@ import { authenticateUser } from '@/lib/auth';
 import { createSession } from '@/lib/session';
 import { loginSchema } from '@/lib/validators';
 import { getRequestMetadataFromHeaders } from '@/lib/auth/utils';
+import { getLoginFailureStatus } from '@/lib/auth/login-http';
 
 const INVALID_LOGIN_ERROR = 'E-mail ou senha inválidos.';
 const ACCOUNT_LOCKED_ERROR = 'Muitas tentativas inválidas. Tente novamente mais tarde.';
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
   if (!authResult.ok) {
     return NextResponse.json(
       { error: authResult.error === 'ACCOUNT_LOCKED' ? ACCOUNT_LOCKED_ERROR : INVALID_LOGIN_ERROR },
-      { status: 401 }
+      { status: getLoginFailureStatus(authResult.error) }
     );
   }
 

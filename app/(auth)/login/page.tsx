@@ -1,7 +1,10 @@
 import { LoginForm } from '@/components/forms/login-form';
+import { isProduction } from '@/lib/auth/config';
 import { defaultAdminCredentials } from '@/lib/default-admin-config';
 
 export default function LoginPage() {
+  const production = isProduction();
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(12,120,178,0.18),_transparent_35%),linear-gradient(180deg,#f8fafc_0%,#eff6ff_100%)] px-4 py-10">
       <div className="grid w-full max-w-5xl overflow-hidden rounded-[32px] bg-white shadow-soft lg:grid-cols-[1.1fr_0.9fr]">
@@ -20,8 +23,18 @@ export default function LoginPage() {
           <div className="mx-auto max-w-md">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand-600">Acesso administrativo</p>
             <h2 className="mt-3 text-3xl font-semibold text-slate-900">Entrar na plataforma</h2>
-            <p className="mt-3 text-sm text-slate-500">Se o administrador ainda não existir no banco, ele é criado automaticamente na primeira tentativa de login com as credenciais iniciais permitidas para o ambiente.</p>
-            <LoginForm defaultAdmin={defaultAdminCredentials} />
+            <p className="mt-3 text-sm text-slate-500">
+              {production
+                ? 'Use suas credenciais administrativas para acessar a plataforma.'
+                : 'Em ambiente local, o administrador inicial pode ser bootstrapado com credenciais configuradas no ambiente.'}
+            </p>
+            <LoginForm
+              defaultAdmin={{
+                email: defaultAdminCredentials.email,
+                name: defaultAdminCredentials.name,
+                password: production ? undefined : defaultAdminCredentials.password
+              }}
+            />
           </div>
         </section>
       </div>

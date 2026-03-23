@@ -1,47 +1,11 @@
-import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { AUTH_COOKIE_NAME } from '@/lib/auth/config';
+import { signSessionToken, type SessionPayload, verifySessionToken } from '@/lib/session-token';
 
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
-export type SessionPayload = {
-  userId: string;
-  email: string;
-  name: string;
-  mustChangePassword: boolean;
-};
-
-function getAuthSecret() {
-  const authSecret = process.env.AUTH_SECRET;
-
-  if (authSecret) {
-    return new TextEncoder().encode(authSecret);
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('AUTH_SECRET must be configured in production.');
-  }
-
-  return new TextEncoder().encode('dev-secret-not-for-production');
-}
-
-async function signSessionToken(payload: SessionPayload) {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('7d')
-    .sign(getAuthSecret());
-}
-
-async function verifySessionToken(token: string): Promise<SessionPayload | null> {
-  try {
-    const result = await jwtVerify(token, getAuthSecret());
-    return result.payload as SessionPayload;
-  } catch {
-    return null;
-  }
-}
+export type { SessionPayload };
 
 export async function createSession(session: SessionPayload) {
   const token = await signSessionToken(session);
