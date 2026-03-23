@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useFormState, useFormStatus } from 'react-dom';
 import { useState } from 'react';
 import { loginAction } from '@/lib/actions';
@@ -56,13 +57,17 @@ export function LoginForm({ defaultAdmin }: { defaultAdmin: DefaultAdminCredenti
         />
       </div>
       {state.error ? <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{state.error}</p> : null}
+      <div className="flex justify-end">
+        <Link href="/forgot-password" className="text-sm font-medium text-brand-700 underline">Esqueci minha senha</Link>
+      </div>
       <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <p className="font-semibold text-slate-900">Acesso administrativo padrão</p>
+            <p className="font-semibold text-slate-900">Acesso administrativo inicial</p>
             <p><strong>Nome:</strong> {defaultAdmin.name}</p>
             <p><strong>E-mail:</strong> {defaultAdmin.email}</p>
             <p><strong>Senha:</strong> {defaultAdmin.password}</p>
+            <p className="text-xs text-amber-700">No primeiro login com senha temporária, o sistema exigirá a troca imediata da senha.</p>
           </div>
           <button
             type="button"

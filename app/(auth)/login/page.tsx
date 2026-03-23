@@ -13,13 +13,14 @@ export default function LoginPage() {
             <div className="rounded-3xl border border-white/15 bg-white/10 p-4">✔ Histórico completo por piscina</div>
             <div className="rounded-3xl border border-white/15 bg-white/10 p-4">✔ Classificação automática: normal, atenção e crítico</div>
             <div className="rounded-3xl border border-white/15 bg-white/10 p-4">✔ Área pública pronta para QR Code e acesso mobile</div>
+            <div className="rounded-3xl border border-white/15 bg-white/10 p-4">✔ Autenticação endurecida com troca obrigatória de senha, auditoria e reset seguro</div>
           </div>
         </section>
         <section className="p-6 sm:p-10">
           <div className="mx-auto max-w-md">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand-600">Acesso administrativo</p>
             <h2 className="mt-3 text-3xl font-semibold text-slate-900">Entrar na plataforma</h2>
-            <p className="mt-3 text-sm text-slate-500">Se o administrador ainda não existir no banco, ele é criado automaticamente na primeira tentativa de login com as credenciais padrão abaixo.</p>
+            <p className="mt-3 text-sm text-slate-500">Se o administrador ainda não existir no banco, ele é criado automaticamente na primeira tentativa de login com as credenciais iniciais permitidas para o ambiente.</p>
             <LoginForm defaultAdmin={defaultAdminCredentials} />
           </div>
         </section>

@@ -2,18 +2,30 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { authenticateUser, requireSession } from '@/lib/auth';
+import { changePassword, authenticateUser, requireSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { resolveMeasurementPhotoPersistence } from '@/lib/measurement-photo-persistence';
+import { hashPassword, verifyPassword } from '@/lib/password';
 import { createSession } from '@/lib/session';
 import { computeMeasurementStatuses } from '@/lib/status';
 import { prepareImageUpload, toPrismaBytes } from '@/lib/uploads';
 import { slugify } from '@/lib/utils';
-import { condominiumSchema, loginSchema, measurementSchema, poolSchema } from '@/lib/validators';
+import {
+  changePasswordSchema,
+  condominiumSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  measurementSchema,
+  poolSchema,
+  resetPasswordSchema
+} from '@/lib/validators';
+import { getCurrentRequestMetadata } from '@/lib/auth/utils';
+import { requestPasswordReset, consumePasswordResetToken } from '@/lib/auth/password-reset';
 
-export type ActionState = { success?: string; error?: string };
+export type ActionState = { success?: string; error?: string; info?: string; resetUrlPreview?: string };
 
 const INVALID_LOGIN_ERROR = 'E-mail ou senha inválidos.';
+const ACCOUNT_LOCKED_ERROR = 'Muitas tentativas inválidas. Tente novamente mais tarde.';
 
 export async function loginAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
@@ -21,12 +33,73 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
     return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
   }
 
-  const user = await authenticateUser(parsed.data.email, parsed.data.password);
-  if (!user) {
-    return { error: INVALID_LOGIN_ERROR };
+  const authResult = await authenticateUser(parsed.data.email, parsed.data.password, getCurrentRequestMetadata());
+  if (!authResult.ok) {
+    return { error: authResult.error === 'ACCOUNT_LOCKED' ? ACCOUNT_LOCKED_ERROR : INVALID_LOGIN_ERROR };
   }
 
-  await createSession(user.id, user.email, user.name);
+  await createSession({
+    userId: authResult.user.id,
+    email: authResult.user.email,
+    name: authResult.user.name,
+    mustChangePassword: authResult.requiresPasswordChange
+  });
+
+  redirect(authResult.requiresPasswordChange ? '/trocar-senha-obrigatoria' : '/');
+}
+
+export async function requestPasswordResetAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = forgotPasswordSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+  }
+
+  const result = await requestPasswordReset(parsed.data.email, getCurrentRequestMetadata());
+
+  return {
+    success: result.message,
+    resetUrlPreview: result.resetUrlPreview
+  };
+}
+
+export async function resetPasswordAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = resetPasswordSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+  }
+
+  const passwordHash = await hashPassword(parsed.data.password);
+  const result = await consumePasswordResetToken(parsed.data.token, passwordHash, getCurrentRequestMetadata());
+
+  if (!result.ok) {
+    return { error: result.error };
+  }
+
+  return { success: 'Senha redefinida com sucesso. Faça login com a nova senha.' };
+}
+
+export async function forcePasswordChangeAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireSession();
+
+  const parsed = changePasswordSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos.' };
+  }
+
+  const valid = await verifyPassword(parsed.data.currentPassword, user.passwordHash);
+  if (!valid) {
+    return { error: 'Senha atual inválida.' };
+  }
+
+  const passwordHash = await hashPassword(parsed.data.password);
+  await changePassword(user.id, passwordHash, getCurrentRequestMetadata());
+  await createSession({
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    mustChangePassword: false
+  });
+
   redirect('/');
 }
 

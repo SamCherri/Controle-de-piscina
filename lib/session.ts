@@ -1,14 +1,15 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { AUTH_COOKIE_NAME } from '@/lib/auth/config';
 
-const COOKIE_NAME = 'pool_admin_session';
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 export type SessionPayload = {
   userId: string;
   email: string;
   name: string;
+  mustChangePassword: boolean;
 };
 
 function getAuthSecret() {
@@ -42,10 +43,10 @@ async function verifySessionToken(token: string): Promise<SessionPayload | null>
   }
 }
 
-export async function createSession(userId: string, email: string, name: string) {
-  const token = await signSessionToken({ userId, email, name });
+export async function createSession(session: SessionPayload) {
+  const token = await signSessionToken(session);
 
-  cookies().set(COOKIE_NAME, token, {
+  cookies().set(AUTH_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -55,11 +56,17 @@ export async function createSession(userId: string, email: string, name: string)
 }
 
 export function clearSession() {
-  cookies().delete(COOKIE_NAME);
+  cookies().set(AUTH_COOKIE_NAME, '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    expires: new Date(0)
+  });
 }
 
 export async function getSession() {
-  const token = cookies().get(COOKIE_NAME)?.value;
+  const token = cookies().get(AUTH_COOKIE_NAME)?.value;
   if (!token) return null;
 
   return verifySessionToken(token);

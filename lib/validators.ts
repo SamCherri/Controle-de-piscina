@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PASSWORD_MIN_LENGTH } from '@/lib/auth/config';
 
 const optionalTrimmedString = z.preprocess(
   value => (typeof value === 'string' ? value.trim() || undefined : value),
@@ -48,6 +49,37 @@ export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('Informe um e-mail válido.'),
   password: z.string().min(6, 'A senha deve ter ao menos 6 caracteres.')
 });
+
+export const passwordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, `A senha deve ter ao menos ${PASSWORD_MIN_LENGTH} caracteres.`)
+  .refine(value => /[A-Za-z]/.test(value) && /\d/.test(value), 'A senha deve conter letras e números.');
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email('Informe um e-mail válido.')
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().trim().min(1, 'Token inválido.'),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, 'Confirme a nova senha.')
+  })
+  .refine(data => data.password === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'As senhas não coincidem.'
+  });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Informe a senha atual.'),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, 'Confirme a nova senha.')
+  })
+  .refine(data => data.password === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'As senhas não coincidem.'
+  });
 
 export const condominiumSchema = z.object({
   name: requiredTrimmedString(3, 'Informe o nome do condomínio.'),
