@@ -21,6 +21,7 @@ import {
   measurementSchema,
   resetAdminUserPasswordSchema,
   poolSchema,
+  updatePoolSchema,
   updateAdminUserSchema,
   resetPasswordSchema
 } from '@/lib/validators';
@@ -285,6 +286,49 @@ export async function createPoolAction(_: ActionState, formData: FormData): Prom
 
   revalidatePath('/');
   redirect(`/condominios/${parsed.data.condominiumId}`);
+}
+
+export async function updatePoolAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
+  const parsed = updatePoolSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Revise os dados da piscina.' };
+  }
+
+  const existingPool = await prisma.pool.findUnique({
+    where: { id: parsed.data.poolId },
+    select: { id: true, condominiumId: true }
+  });
+
+  if (!existingPool || existingPool.condominiumId !== parsed.data.condominiumId) {
+    return { error: 'Piscina não encontrada.' };
+  }
+
+  await prisma.pool.update({
+    where: { id: parsed.data.poolId },
+    data: {
+      condominiumId: parsed.data.condominiumId,
+      name: parsed.data.name,
+      description: parsed.data.description,
+      locationNote: parsed.data.locationNote,
+      idealChlorineMin: parsed.data.idealChlorineMin,
+      idealChlorineMax: parsed.data.idealChlorineMax,
+      idealPhMin: parsed.data.idealPhMin,
+      idealPhMax: parsed.data.idealPhMax,
+      idealAlkalinityMin: parsed.data.idealAlkalinityMin,
+      idealAlkalinityMax: parsed.data.idealAlkalinityMax,
+      idealHardnessMin: parsed.data.idealHardnessMin,
+      idealHardnessMax: parsed.data.idealHardnessMax,
+      idealTemperatureMin: parsed.data.idealTemperatureMin,
+      idealTemperatureMax: parsed.data.idealTemperatureMax
+    }
+  });
+
+  revalidatePath('/');
+  revalidatePath(`/condominios/${parsed.data.condominiumId}`);
+  revalidatePath(`/condominios/${parsed.data.condominiumId}/piscinas/${parsed.data.poolId}`);
+  redirect(`/condominios/${parsed.data.condominiumId}/piscinas/${parsed.data.poolId}`);
 }
 
 export async function saveMeasurementAction(_: ActionState, formData: FormData): Promise<ActionState> {

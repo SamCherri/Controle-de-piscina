@@ -43,6 +43,7 @@ export default async function CondominiumPage({ params }: { params: { condominiu
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link href={`/condominios/${condominium.id}/piscinas/${pool.id}`} className="rounded-2xl bg-brand-600 px-4 py-2 text-sm font-medium text-white">Ver painel</Link>
+                <Link href={`/condominios/${condominium.id}/piscinas/${pool.id}/editar`} className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700">Editar configuração</Link>
                 <Link href={`/public/piscinas/${pool.slug}`} className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700">Página pública</Link>
               </div>
             </article>
