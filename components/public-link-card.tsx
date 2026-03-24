@@ -29,8 +29,8 @@ export function PublicLinkCard({ publicUrl, warning }: PublicLinkCardProps) {
 
     try {
       await navigator.share({
-        title: 'Página pública da piscina',
-        text: 'Acompanhe a última medição da piscina neste link.',
+        title: 'Modo morador da piscina',
+        text: 'Acompanhe a temperatura atual da piscina neste link.',
         url: publicUrl
       });
     } catch {
@@ -41,7 +41,7 @@ export function PublicLinkCard({ publicUrl, warning }: PublicLinkCardProps) {
   return (
     <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-slate-900">Link público da piscina</p>
+        <p className="text-sm font-semibold text-slate-900">Link do modo morador</p>
         <p className="break-all text-xs text-slate-500">{publicUrl}</p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -52,7 +52,7 @@ export function PublicLinkCard({ publicUrl, warning }: PublicLinkCardProps) {
       {copyFeedback === 'copied' ? <p className="text-xs text-emerald-700">Link copiado.</p> : null}
       {copyFeedback === 'error' ? <p className="text-xs text-amber-700">Não foi possível copiar automaticamente neste navegador.</p> : null}
       {warning ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">{warning}</p> : null}
-      <p className="text-xs leading-5 text-slate-500">Como apps de mercado fazem: usam uma URL pública canônica no QR code e mantêm a foto no backend para que qualquer celular abra o mesmo conteúdo, sem depender do aparelho que registrou a medição.</p>
+      <p className="text-xs leading-5 text-slate-500">O QR Code continua apontando para esta URL pública canônica, agora exibida no modo morador.</p>
     </div>
   );
 }

@@ -276,15 +276,24 @@ export async function createPoolAction(_: ActionState, formData: FormData): Prom
     return { error: parsed.error.issues[0]?.message ?? 'Revise os dados da piscina.' };
   }
 
+  const coverPhoto = formData.get('coverPhoto') as File | null;
+  const upload = await prepareImageUpload(coverPhoto);
+  if (!upload.ok) {
+    return { error: upload.error };
+  }
+
   const slugBase = slugify(`${parsed.data.name}-${Date.now()}`);
-  await prisma.pool.create({
+  const createdPool = await prisma.pool.create({
     data: {
       ...parsed.data,
-      slug: slugBase
+      slug: slugBase,
+      coverPhotoData: upload.buffer ? toPrismaBytes(upload.buffer) : null,
+      coverPhotoMimeType: upload.mimeType ?? null
     }
   });
 
   revalidatePath('/');
+  revalidatePath(`/public/piscinas/${createdPool.slug}`);
   redirect(`/condominios/${parsed.data.condominiumId}`);
 }
 
@@ -305,6 +314,12 @@ export async function updatePoolAction(_: ActionState, formData: FormData): Prom
     return { error: 'Piscina não encontrada.' };
   }
 
+  const coverPhoto = formData.get('coverPhoto') as File | null;
+  const upload = await prepareImageUpload(coverPhoto);
+  if (!upload.ok) {
+    return { error: upload.error };
+  }
+
   const updatedPool = await prisma.$transaction(async tx => {
     const pool = await tx.pool.update({
       where: { id: parsed.data.poolId },
@@ -322,7 +337,13 @@ export async function updatePoolAction(_: ActionState, formData: FormData): Prom
         idealHardnessMin: parsed.data.idealHardnessMin,
         idealHardnessMax: parsed.data.idealHardnessMax,
         idealTemperatureMin: parsed.data.idealTemperatureMin,
-        idealTemperatureMax: parsed.data.idealTemperatureMax
+        idealTemperatureMax: parsed.data.idealTemperatureMax,
+        ...(upload.buffer && upload.mimeType
+          ? {
+              coverPhotoData: toPrismaBytes(upload.buffer),
+              coverPhotoMimeType: upload.mimeType
+            }
+          : {})
       }
     });
 

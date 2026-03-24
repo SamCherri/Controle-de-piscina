@@ -78,6 +78,8 @@ model Pool {
   slug                String        @unique
   description         String?
   locationNote        String?
+  coverPhotoData      Bytes?
+  coverPhotoMimeType  String?
   idealChlorineMin    Float         @default(1)
   idealChlorineMax    Float         @default(3)
   idealPhMin          Float         @default(7.2)
