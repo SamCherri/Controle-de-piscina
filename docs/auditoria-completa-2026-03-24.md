@@ -20,7 +20,7 @@
   - Hardening de autenticação com bloqueio temporário após tentativas inválidas e logs de auditoria.
   - Sessão em cookie `httpOnly`, `sameSite=lax` e `secure` em produção.
   - Upload com validação de tipo/tamanho e persistência no banco (evita dependência de filesystem efêmero).
-  - Build e testes passando integralmente.
+  - Build e testes reportados como bem-sucedidos no contexto da auditoria.
 - **Principais riscos remanescentes (prioridade):**
   1. API de medições retorna **todos os campos** sem paginação, incluindo potencialmente `photoData` (blob), o que pode causar payload excessivo e degradação.
   2. Rotas de API autenticadas não impõem autorização granular por `role` (somente autenticação), permitindo que qualquer usuário logado acesse operações técnicas de medições/uploads.
@@ -80,12 +80,12 @@
 ### Prioridade P3
 5. Definir SLO técnico para tamanho máximo de resposta da API de medições e monitorar regressões.
 
-## 6) Comandos executados na auditoria
+## 6) Comandos reportados na auditoria
 
-- `npm run test` ✅
-- `npm run lint` ✅
-- `npm run build` ✅
-- `npm audit --json` ⚠️ (não executou por ausência de lockfile)
+- `npm run test` ✅ (resultado reportado durante a auditoria)
+- `npm run lint` ✅ (resultado reportado durante a auditoria)
+- `npm run build` ✅ (resultado reportado durante a auditoria)
+- `npm audit --json` ⚠️ (resultado reportado: não executou por ausência de lockfile)
 
 ## 7) Conclusão
 
