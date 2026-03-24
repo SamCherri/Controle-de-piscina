@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { createPoolAction, updatePoolAction } from '@/lib/actions';
 
@@ -11,6 +12,7 @@ type PoolFormInitialValues = {
   description?: string | null;
   locationNote?: string | null;
   hasCoverPhoto?: boolean;
+  tracksTemperature?: boolean;
   idealChlorineMin: number;
   idealChlorineMax: number;
   idealPhMin: number;
@@ -19,8 +21,8 @@ type PoolFormInitialValues = {
   idealAlkalinityMax: number;
   idealHardnessMin: number;
   idealHardnessMax: number;
-  idealTemperatureMin: number;
-  idealTemperatureMax: number;
+  idealTemperatureMin?: number | null;
+  idealTemperatureMax?: number | null;
 };
 
 type PoolFormProps = {
@@ -50,13 +52,17 @@ const DEFAULT_NUMERIC_FIELDS = [
   ['idealAlkalinityMin', 'Alcalinidade mín.', 80],
   ['idealAlkalinityMax', 'Alcalinidade máx.', 120],
   ['idealHardnessMin', 'Dureza mín.', 200],
-  ['idealHardnessMax', 'Dureza máx.', 400],
+  ['idealHardnessMax', 'Dureza máx.', 400]
+] as const;
+
+const TEMPERATURE_FIELDS = [
   ['idealTemperatureMin', 'Temperatura mín.', 24],
   ['idealTemperatureMax', 'Temperatura máx.', 30]
 ] as const;
 
 export function PoolForm({ condominiumId, initialValues, mode = 'create' }: PoolFormProps) {
   const [state, action] = useFormState(mode === 'edit' ? updatePoolAction : createPoolAction, {});
+  const [tracksTemperature, setTracksTemperature] = useState(initialValues?.tracksTemperature ?? true);
   const coverPhotoPreviewUrl = initialValues?.id && initialValues?.hasCoverPhoto
     ? `/api/pools/${initialValues.id}/cover-photo`
     : undefined;
@@ -88,6 +94,20 @@ export function PoolForm({ condominiumId, initialValues, mode = 'create' }: Pool
             placeholder="Ao lado do salão de festas"
             defaultValue={initialValues?.locationNote ?? ''}
           />
+        </div>
+        <div className="space-y-3 md:col-span-2">
+          <label className="inline-flex items-center gap-3 text-sm font-medium text-slate-800" htmlFor="tracksTemperature">
+            <input
+              id="tracksTemperature"
+              name="tracksTemperature"
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300 text-brand-600"
+              checked={tracksTemperature}
+              onChange={event => setTracksTemperature(event.target.checked)}
+            />
+            Esta piscina controla temperatura
+          </label>
+          <p className="text-xs text-slate-500">Desative para piscinas não aquecidas. A temperatura deixará de ser obrigatória nas medições e sairá dos painéis.</p>
         </div>
         <div className="space-y-2 md:col-span-2">
           <label htmlFor="coverPhoto">Foto fixa da piscina (modo morador)</label>
@@ -123,6 +143,21 @@ export function PoolForm({ condominiumId, initialValues, mode = 'create' }: Pool
               />
             </div>
           ))}
+          {tracksTemperature
+            ? TEMPERATURE_FIELDS.map(([name, label, fallbackValue]) => (
+              <div key={name} className="space-y-2">
+                <label htmlFor={name}>{label}</label>
+                <input
+                  id={name}
+                  name={name}
+                  defaultValue={initialValues?.[name] ?? fallbackValue}
+                  type="number"
+                  step="0.1"
+                  required
+                />
+              </div>
+            ))
+            : null}
         </div>
       </div>
       {state.error ? <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{state.error}</p> : null}

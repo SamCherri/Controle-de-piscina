@@ -29,6 +29,7 @@ export default async function EditPoolPage({ params }: { params: { condominiumId
           description: pool.description,
           locationNote: pool.locationNote,
           hasCoverPhoto: Boolean(pool.coverPhotoData && pool.coverPhotoMimeType),
+          tracksTemperature: pool.tracksTemperature,
           idealChlorineMin: pool.idealChlorineMin,
           idealChlorineMax: pool.idealChlorineMax,
           idealPhMin: pool.idealPhMin,

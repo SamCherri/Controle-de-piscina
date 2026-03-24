@@ -54,14 +54,16 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
             </div>
           )}
 
-          <div className="mt-6 rounded-2xl bg-brand-600 px-5 py-5 text-white md:px-6 md:py-6">
-            <p className="text-xs uppercase tracking-[0.22em] text-brand-100">Temperatura atual</p>
-            {latestMeasurement ? (
-              <p className="mt-2 text-5xl font-semibold leading-none md:text-6xl">{latestMeasurement.temperature.toFixed(1)}°C</p>
-            ) : (
-              <p className="mt-3 text-lg font-medium">Sem medição disponível no momento</p>
-            )}
-          </div>
+          {pool.tracksTemperature ? (
+            <div className="mt-6 rounded-2xl bg-brand-600 px-5 py-5 text-white md:px-6 md:py-6">
+              <p className="text-xs uppercase tracking-[0.22em] text-brand-100">Temperatura atual</p>
+              {latestMeasurement && typeof latestMeasurement.temperature === 'number' ? (
+                <p className="mt-2 text-5xl font-semibold leading-none md:text-6xl">{latestMeasurement.temperature.toFixed(1)}°C</p>
+              ) : (
+                <p className="mt-3 text-lg font-medium">Sem medição disponível no momento</p>
+              )}
+            </div>
+          ) : null}
 
           <p className="mt-4 text-sm text-slate-600">
             {latestMeasurement

@@ -27,7 +27,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
           { measuredAt: 'desc' },
           { createdAt: 'desc' }
         ],
-        take: 30
+        take: 90
       }
     }
   });
@@ -41,10 +41,24 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
   const chartData = [...pool.measurements]
     .reverse()
     .map(item => ({
-      label: format(item.measuredAt, 'dd/MM'),
-      cloro: item.chlorine,
+      id: item.id,
+      measuredAtIso: item.measuredAt.toISOString(),
+      measuredAtLabel: format(item.measuredAt, 'dd/MM'),
+      chlorine: item.chlorine,
       ph: item.ph,
-      temperatura: item.temperature
+      alkalinity: item.alkalinity,
+      hardness: item.hardness,
+      temperature: item.temperature,
+      chlorineOutOfRange: item.chlorine < pool.idealChlorineMin || item.chlorine > pool.idealChlorineMax,
+      phOutOfRange: item.ph < pool.idealPhMin || item.ph > pool.idealPhMax,
+      alkalinityOutOfRange: item.alkalinity < pool.idealAlkalinityMin || item.alkalinity > pool.idealAlkalinityMax,
+      hardnessOutOfRange: item.hardness < pool.idealHardnessMin || item.hardness > pool.idealHardnessMax,
+      temperatureOutOfRange: pool.tracksTemperature
+        && typeof item.temperature === 'number'
+        && typeof pool.idealTemperatureMin === 'number'
+        && typeof pool.idealTemperatureMax === 'number'
+        ? item.temperature < pool.idealTemperatureMin || item.temperature > pool.idealTemperatureMax
+        : false
     }));
 
   const photoSelection = latest ? selectMeasurementPhotoForDisplay(pool.measurements) : null;
@@ -85,7 +99,9 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
                 <MetricCard label="pH" value={latest.ph} unit="" status={latest.phStatus} range={`${pool.idealPhMin} a ${pool.idealPhMax}`} />
                 <MetricCard label="Alcalinidade" value={latest.alkalinity} unit="ppm" status={latest.alkalinityStatus} range={`${pool.idealAlkalinityMin} a ${pool.idealAlkalinityMax} ppm`} />
                 <MetricCard label="Dureza cálcica" value={latest.hardness} unit="ppm" status={latest.hardnessStatus} range={`${pool.idealHardnessMin} a ${pool.idealHardnessMax} ppm`} />
-                <MetricCard label="Temperatura" value={latest.temperature} unit="°C" status={latest.temperatureStatus} range={`${pool.idealTemperatureMin} a ${pool.idealTemperatureMax} °C`} />
+                {pool.tracksTemperature && typeof latest.temperature === 'number' ? (
+                  <MetricCard label="Temperatura" value={latest.temperature} unit="°C" status={latest.temperatureStatus} range={`${pool.idealTemperatureMin} a ${pool.idealTemperatureMax} °C`} />
+                ) : null}
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl bg-slate-50 p-4">
@@ -101,17 +117,27 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
             <div className="card">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-900">Gráficos por período</h3>
-                  <p className="text-sm text-slate-500">Últimas 30 medições de cloro, pH e temperatura.</p>
+                  <h3 className="text-xl font-semibold text-slate-900">Gráficos detalhados</h3>
+                  <p className="text-sm text-slate-500">Análise por parâmetro com filtros de período, faixas ideais e destaque para pontos fora da meta.</p>
                 </div>
               </div>
-              <DashboardChart data={chartData} />
+              <DashboardChart
+                data={chartData}
+                tracksTemperature={pool.tracksTemperature}
+                ranges={{
+                  chlorine: { min: pool.idealChlorineMin, max: pool.idealChlorineMax },
+                  ph: { min: pool.idealPhMin, max: pool.idealPhMax },
+                  alkalinity: { min: pool.idealAlkalinityMin, max: pool.idealAlkalinityMax },
+                  hardness: { min: pool.idealHardnessMin, max: pool.idealHardnessMax },
+                  temperature: { min: pool.idealTemperatureMin, max: pool.idealTemperatureMax }
+                }}
+              />
             </div>
             <div className="card overflow-hidden">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-xl font-semibold text-slate-900">Histórico completo</h3>
-                  <p className="text-sm text-slate-500">Auditoria mínima com data, hora e responsável por lançamento.</p>
+                  <p className="text-sm text-slate-500">Auditoria completa com navegação para foto, texto, produtos e status de cada medição.</p>
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -122,7 +148,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
                       <th className="py-3 pr-4">Responsável</th>
                       <th className="py-3 pr-4">Cloro</th>
                       <th className="py-3 pr-4">pH</th>
-                      <th className="py-3 pr-4">Temp.</th>
+                      {pool.tracksTemperature ? <th className="py-3 pr-4">Temp.</th> : null}
                       <th className="py-3 pr-4">Status</th>
                       <th className="py-3 pr-4">Ações</th>
                     </tr>
@@ -134,10 +160,11 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
                         <td className="py-4 pr-4 text-slate-600">{item.responsibleName}</td>
                         <td className="py-4 pr-4 text-slate-600">{item.chlorine}</td>
                         <td className="py-4 pr-4 text-slate-600">{item.ph}</td>
-                        <td className="py-4 pr-4 text-slate-600">{item.temperature} °C</td>
+                        {pool.tracksTemperature ? <td className="py-4 pr-4 text-slate-600">{typeof item.temperature === 'number' ? `${item.temperature} °C` : '—'}</td> : null}
                         <td className="py-4 pr-4"><StatusBadge status={item.overallStatus} /></td>
                         <td className="py-4 pr-4">
                           <div className="flex flex-wrap gap-2">
+                            <Link href={`/condominios/${pool.condominiumId}/piscinas/${pool.id}/medicoes/${item.id}`} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600">Ver detalhes</Link>
                             <Link href={`/condominios/${pool.condominiumId}/piscinas/${pool.id}/medicoes/${item.id}/editar`} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600">Editar</Link>
                             <form action={deleteMeasurementAction}>
                               <input type="hidden" name="measurementId" value={item.id} />

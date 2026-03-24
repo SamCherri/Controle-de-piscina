@@ -43,6 +43,7 @@ export default async function EditMeasurementPage({ params }: { params: { condom
       </div>
       <MeasurementForm
         poolId={measurement.poolId}
+        tracksTemperature={measurement.pool.tracksTemperature}
         defaults={{
           id: measurement.id,
           measuredAt,
@@ -51,7 +52,7 @@ export default async function EditMeasurementPage({ params }: { params: { condom
           ph: measurement.ph,
           alkalinity: measurement.alkalinity,
           hardness: measurement.hardness,
-          temperature: measurement.temperature,
+          temperature: measurement.temperature ?? undefined,
           productsApplied: measurement.productsApplied,
           observations: measurement.observations,
           photoPath: measurement.photoPath

@@ -28,6 +28,23 @@ const nonNegativeNumber = (label: string, maximum: number) =>
     `${label}: informe um valor entre 0 e ${maximum}.`
   );
 
+const optionalBoundedNumber = (label: string, minimum: number, maximum: number) =>
+  z.preprocess(
+    value => {
+      if (value === '' || value === null || value === undefined) {
+        return undefined;
+      }
+      return value;
+    },
+    boundedNumber(label, minimum, maximum).optional()
+  );
+
+const checkboxBoolean = z.preprocess(value => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value === 'on' || value === 'true';
+  return false;
+}, z.boolean());
+
 const orderedRange = <T extends Record<string, unknown>>(minField: keyof T, maxField: keyof T, label: string) =>
   (values: T, ctx: z.RefinementCtx) => {
     const min = values[minField];
@@ -134,6 +151,7 @@ const poolSchemaBase = z.object({
   name: requiredTrimmedString(2, 'Informe o nome da piscina.'),
   description: optionalTrimmedString,
   locationNote: optionalTrimmedString,
+  tracksTemperature: checkboxBoolean,
   idealChlorineMin: boundedNumber('o cloro mínimo', 0, 20),
   idealChlorineMax: boundedNumber('o cloro máximo', 0, 20),
   idealPhMin: boundedNumber('o pH mínimo', 0, 14),
@@ -142,8 +160,8 @@ const poolSchemaBase = z.object({
   idealAlkalinityMax: nonNegativeNumber('a alcalinidade máxima', 1000),
   idealHardnessMin: nonNegativeNumber('a dureza mínima', 5000),
   idealHardnessMax: nonNegativeNumber('a dureza máxima', 5000),
-  idealTemperatureMin: boundedNumber('a temperatura mínima', 0, 60),
-  idealTemperatureMax: boundedNumber('a temperatura máxima', 0, 60)
+  idealTemperatureMin: optionalBoundedNumber('a temperatura mínima', 0, 60),
+  idealTemperatureMax: optionalBoundedNumber('a temperatura máxima', 0, 60)
 });
 
 const applyPoolRangeValidation = <T extends Record<string, unknown>>(data: T, ctx: z.RefinementCtx) => {
@@ -151,7 +169,30 @@ const applyPoolRangeValidation = <T extends Record<string, unknown>>(data: T, ct
   orderedRange('idealPhMin', 'idealPhMax', 'pH')(data, ctx);
   orderedRange('idealAlkalinityMin', 'idealAlkalinityMax', 'Alcalinidade')(data, ctx);
   orderedRange('idealHardnessMin', 'idealHardnessMax', 'Dureza cálcica')(data, ctx);
-  orderedRange('idealTemperatureMin', 'idealTemperatureMax', 'Temperatura')(data, ctx);
+
+  const tracksTemperature = data.tracksTemperature;
+  const idealTemperatureMin = data.idealTemperatureMin;
+  const idealTemperatureMax = data.idealTemperatureMax;
+
+  if (tracksTemperature) {
+    if (typeof idealTemperatureMin !== 'number') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['idealTemperatureMin'],
+        message: 'Informe a temperatura mínima quando o monitoramento de temperatura estiver ativo.'
+      });
+    }
+
+    if (typeof idealTemperatureMax !== 'number') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['idealTemperatureMax'],
+        message: 'Informe a temperatura máxima quando o monitoramento de temperatura estiver ativo.'
+      });
+    }
+
+    orderedRange('idealTemperatureMin', 'idealTemperatureMax', 'Temperatura')(data, ctx);
+  }
 };
 
 export const poolSchema = poolSchemaBase.superRefine(applyPoolRangeValidation);
@@ -171,7 +212,7 @@ export const measurementSchema = z.object({
   ph: boundedNumber('o pH', 0, 14),
   alkalinity: nonNegativeNumber('a alcalinidade', 1000),
   hardness: nonNegativeNumber('a dureza cálcica', 5000),
-  temperature: boundedNumber('a temperatura', 0, 60),
+  temperature: optionalBoundedNumber('a temperatura', 0, 60),
   productsApplied: requiredTrimmedString(2, 'Informe os produtos aplicados.'),
   observations: optionalTrimmedString,
   photoPath: optionalTrimmedString
