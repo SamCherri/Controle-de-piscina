@@ -21,6 +21,7 @@ import {
   measurementSchema,
   resetAdminUserPasswordSchema,
   poolSchema,
+  updatePoolSchema,
   updateAdminUserSchema,
   resetPasswordSchema
 } from '@/lib/validators';
@@ -285,6 +286,78 @@ export async function createPoolAction(_: ActionState, formData: FormData): Prom
 
   revalidatePath('/');
   redirect(`/condominios/${parsed.data.condominiumId}`);
+}
+
+export async function updatePoolAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdminSession();
+
+  const parsed = updatePoolSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Revise os dados da piscina.' };
+  }
+
+  const existingPool = await prisma.pool.findUnique({
+    where: { id: parsed.data.poolId },
+    select: { id: true, condominiumId: true }
+  });
+
+  if (!existingPool || existingPool.condominiumId !== parsed.data.condominiumId) {
+    return { error: 'Piscina não encontrada.' };
+  }
+
+  const updatedPool = await prisma.$transaction(async tx => {
+    const pool = await tx.pool.update({
+      where: { id: parsed.data.poolId },
+      data: {
+        condominiumId: parsed.data.condominiumId,
+        name: parsed.data.name,
+        description: parsed.data.description,
+        locationNote: parsed.data.locationNote,
+        idealChlorineMin: parsed.data.idealChlorineMin,
+        idealChlorineMax: parsed.data.idealChlorineMax,
+        idealPhMin: parsed.data.idealPhMin,
+        idealPhMax: parsed.data.idealPhMax,
+        idealAlkalinityMin: parsed.data.idealAlkalinityMin,
+        idealAlkalinityMax: parsed.data.idealAlkalinityMax,
+        idealHardnessMin: parsed.data.idealHardnessMin,
+        idealHardnessMax: parsed.data.idealHardnessMax,
+        idealTemperatureMin: parsed.data.idealTemperatureMin,
+        idealTemperatureMax: parsed.data.idealTemperatureMax
+      }
+    });
+
+    const measurements = await tx.measurement.findMany({
+      where: { poolId: pool.id },
+      select: {
+        id: true,
+        chlorine: true,
+        ph: true,
+        alkalinity: true,
+        hardness: true,
+        temperature: true
+      }
+    });
+
+    await Promise.all(
+      measurements.map(measurement => {
+        const statuses = computeMeasurementStatuses(pool, measurement);
+
+        return tx.measurement.update({
+          where: { id: measurement.id },
+          data: statuses
+        });
+      })
+    );
+
+    return pool;
+  });
+
+  revalidatePath('/');
+  revalidatePath(`/condominios/${parsed.data.condominiumId}`);
+  revalidatePath(`/condominios/${parsed.data.condominiumId}/piscinas/${parsed.data.poolId}`);
+  revalidatePath(`/public/piscinas/${updatedPool.slug}`);
+  revalidatePath('/debug/fotos');
+  redirect(`/condominios/${parsed.data.condominiumId}/piscinas/${parsed.data.poolId}`);
 }
 
 export async function saveMeasurementAction(_: ActionState, formData: FormData): Promise<ActionState> {

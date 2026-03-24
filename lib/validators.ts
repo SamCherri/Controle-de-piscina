@@ -129,30 +129,38 @@ export const condominiumSchema = z.object({
   contactPhone: optionalTrimmedString
 });
 
-export const poolSchema = z
-  .object({
-    condominiumId: z.string().min(1, 'Condomínio inválido.'),
-    name: requiredTrimmedString(2, 'Informe o nome da piscina.'),
-    description: optionalTrimmedString,
-    locationNote: optionalTrimmedString,
-    idealChlorineMin: boundedNumber('o cloro mínimo', 0, 20),
-    idealChlorineMax: boundedNumber('o cloro máximo', 0, 20),
-    idealPhMin: boundedNumber('o pH mínimo', 0, 14),
-    idealPhMax: boundedNumber('o pH máximo', 0, 14),
-    idealAlkalinityMin: nonNegativeNumber('a alcalinidade mínima', 1000),
-    idealAlkalinityMax: nonNegativeNumber('a alcalinidade máxima', 1000),
-    idealHardnessMin: nonNegativeNumber('a dureza mínima', 5000),
-    idealHardnessMax: nonNegativeNumber('a dureza máxima', 5000),
-    idealTemperatureMin: boundedNumber('a temperatura mínima', 0, 60),
-    idealTemperatureMax: boundedNumber('a temperatura máxima', 0, 60)
+const poolSchemaBase = z.object({
+  condominiumId: z.string().min(1, 'Condomínio inválido.'),
+  name: requiredTrimmedString(2, 'Informe o nome da piscina.'),
+  description: optionalTrimmedString,
+  locationNote: optionalTrimmedString,
+  idealChlorineMin: boundedNumber('o cloro mínimo', 0, 20),
+  idealChlorineMax: boundedNumber('o cloro máximo', 0, 20),
+  idealPhMin: boundedNumber('o pH mínimo', 0, 14),
+  idealPhMax: boundedNumber('o pH máximo', 0, 14),
+  idealAlkalinityMin: nonNegativeNumber('a alcalinidade mínima', 1000),
+  idealAlkalinityMax: nonNegativeNumber('a alcalinidade máxima', 1000),
+  idealHardnessMin: nonNegativeNumber('a dureza mínima', 5000),
+  idealHardnessMax: nonNegativeNumber('a dureza máxima', 5000),
+  idealTemperatureMin: boundedNumber('a temperatura mínima', 0, 60),
+  idealTemperatureMax: boundedNumber('a temperatura máxima', 0, 60)
+});
+
+const applyPoolRangeValidation = <T extends Record<string, unknown>>(data: T, ctx: z.RefinementCtx) => {
+  orderedRange('idealChlorineMin', 'idealChlorineMax', 'Cloro')(data, ctx);
+  orderedRange('idealPhMin', 'idealPhMax', 'pH')(data, ctx);
+  orderedRange('idealAlkalinityMin', 'idealAlkalinityMax', 'Alcalinidade')(data, ctx);
+  orderedRange('idealHardnessMin', 'idealHardnessMax', 'Dureza cálcica')(data, ctx);
+  orderedRange('idealTemperatureMin', 'idealTemperatureMax', 'Temperatura')(data, ctx);
+};
+
+export const poolSchema = poolSchemaBase.superRefine(applyPoolRangeValidation);
+
+export const updatePoolSchema = poolSchemaBase
+  .extend({
+    poolId: z.string().min(1, 'Piscina inválida.')
   })
-  .superRefine((data, ctx) => {
-    orderedRange('idealChlorineMin', 'idealChlorineMax', 'Cloro')(data, ctx);
-    orderedRange('idealPhMin', 'idealPhMax', 'pH')(data, ctx);
-    orderedRange('idealAlkalinityMin', 'idealAlkalinityMax', 'Alcalinidade')(data, ctx);
-    orderedRange('idealHardnessMin', 'idealHardnessMax', 'Dureza cálcica')(data, ctx);
-    orderedRange('idealTemperatureMin', 'idealTemperatureMax', 'Temperatura')(data, ctx);
-  });
+  .superRefine(applyPoolRangeValidation);
 
 export const measurementSchema = z.object({
   id: z.string().optional(),

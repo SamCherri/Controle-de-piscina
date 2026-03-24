@@ -159,6 +159,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
               <h3 className="text-lg font-semibold text-slate-900">QR Code da piscina</h3>
               <Image src={qrCode} alt="QR Code da página pública" width={280} height={280} className="mx-auto rounded-2xl border border-slate-200 bg-white p-3" unoptimized />
               <PublicLinkCard publicUrl={publicUrl} warning={publicAppUrl.warning} />
+              <Link href={`/condominios/${pool.condominiumId}/piscinas/${pool.id}/editar`} className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">Editar configuração da piscina</Link>
               <Link href={`/public/piscinas/${pool.slug}`} className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">Abrir tela pública</Link>
               <Link href={`/debug/fotos?poolId=${pool.id}`} className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">Abrir auditoria de fotos desta piscina</Link>
             </div>
