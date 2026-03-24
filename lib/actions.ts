@@ -287,6 +287,8 @@ export async function createPoolAction(_: ActionState, formData: FormData): Prom
     data: {
       ...parsed.data,
       slug: slugBase,
+      idealTemperatureMin: parsed.data.tracksTemperature ? parsed.data.idealTemperatureMin : null,
+      idealTemperatureMax: parsed.data.tracksTemperature ? parsed.data.idealTemperatureMax : null,
       coverPhotoData: upload.buffer ? toPrismaBytes(upload.buffer) : null,
       coverPhotoMimeType: upload.mimeType ?? null
     }
@@ -336,8 +338,9 @@ export async function updatePoolAction(_: ActionState, formData: FormData): Prom
         idealAlkalinityMax: parsed.data.idealAlkalinityMax,
         idealHardnessMin: parsed.data.idealHardnessMin,
         idealHardnessMax: parsed.data.idealHardnessMax,
-        idealTemperatureMin: parsed.data.idealTemperatureMin,
-        idealTemperatureMax: parsed.data.idealTemperatureMax,
+        tracksTemperature: parsed.data.tracksTemperature,
+        idealTemperatureMin: parsed.data.tracksTemperature ? parsed.data.idealTemperatureMin : null,
+        idealTemperatureMax: parsed.data.tracksTemperature ? parsed.data.idealTemperatureMax : null,
         ...(upload.buffer && upload.mimeType
           ? {
               coverPhotoData: toPrismaBytes(upload.buffer),
@@ -394,6 +397,14 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
 
   const pool = await prisma.pool.findUnique({ where: { id: parsed.data.poolId } });
   if (!pool) return { error: 'Piscina não encontrada.' };
+
+  if (pool.tracksTemperature && typeof parsed.data.temperature !== 'number') {
+    return { error: 'Informe a temperatura para piscinas com monitoramento de temperatura ativo.' };
+  }
+
+  if (!pool.tracksTemperature && parsed.data.temperature !== undefined) {
+    parsed.data.temperature = undefined;
+  }
 
   const existingMeasurement = parsed.data.id
     ? await prisma.measurement.findUnique({
@@ -458,6 +469,7 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
       where: { id: parsed.data.id },
       data: {
         ...parsed.data,
+        temperature: pool.tracksTemperature ? parsed.data.temperature : null,
         measuredAt: new Date(parsed.data.measuredAt),
         ...photoFields,
         ...statuses
@@ -467,6 +479,7 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
     await prisma.measurement.create({
       data: {
         ...parsed.data,
+        temperature: pool.tracksTemperature ? parsed.data.temperature : null,
         measuredAt: new Date(parsed.data.measuredAt),
         ...photoFields,
         ...statuses
@@ -476,6 +489,9 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
 
   revalidatePath('/');
   revalidatePath(`/condominios/${pool.condominiumId}/piscinas/${pool.id}`);
+  if (parsed.data.id) {
+    revalidatePath(`/condominios/${pool.condominiumId}/piscinas/${pool.id}/medicoes/${parsed.data.id}`);
+  }
   revalidatePath(`/debug/fotos`);
   revalidatePath(`/public/piscinas/${pool.slug}`);
   redirect(`/condominios/${pool.condominiumId}/piscinas/${pool.id}`);
@@ -490,6 +506,7 @@ export async function deleteMeasurementAction(formData: FormData) {
   const pool = await prisma.pool.findUnique({ where: { id: poolId } });
   await prisma.measurement.delete({ where: { id: measurementId } });
   revalidatePath(`/condominios/${condominiumId}/piscinas/${poolId}`);
+  revalidatePath(`/condominios/${condominiumId}/piscinas/${poolId}/medicoes/${measurementId}`);
   revalidatePath(`/debug/fotos`);
   if (pool) revalidatePath(`/public/piscinas/${pool.slug}`);
 }

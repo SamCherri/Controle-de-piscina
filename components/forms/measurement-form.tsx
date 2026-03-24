@@ -5,6 +5,7 @@ import { saveMeasurementAction } from '@/lib/actions';
 
 type MeasurementFormProps = {
   poolId: string;
+  tracksTemperature: boolean;
   defaults?: {
     id?: string;
     measuredAt: string;
@@ -13,7 +14,7 @@ type MeasurementFormProps = {
     ph: number;
     alkalinity: number;
     hardness: number;
-    temperature: number;
+    temperature?: number | null;
     productsApplied: string;
     observations?: string | null;
     photoPath?: string | null;
@@ -25,7 +26,7 @@ function SubmitButton() {
   return <button type="submit" className="rounded-2xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white">{pending ? 'Salvando...' : 'Salvar medição'}</button>;
 }
 
-export function MeasurementForm({ poolId, defaults }: MeasurementFormProps) {
+export function MeasurementForm({ poolId, tracksTemperature, defaults }: MeasurementFormProps) {
   const [state, action] = useFormState(saveMeasurementAction, {});
 
   return (
@@ -51,14 +52,19 @@ export function MeasurementForm({ poolId, defaults }: MeasurementFormProps) {
           ['chlorine', 'Cloro', defaults?.chlorine ?? 1.5],
           ['ph', 'pH', defaults?.ph ?? 7.4],
           ['alkalinity', 'Alcalinidade', defaults?.alkalinity ?? 95],
-          ['hardness', 'Dureza cálcica', defaults?.hardness ?? 240],
-          ['temperature', 'Temperatura da água', defaults?.temperature ?? 27]
+          ['hardness', 'Dureza cálcica', defaults?.hardness ?? 240]
         ].map(([name, label, value]) => (
           <div key={name as string} className="space-y-2">
             <label htmlFor={name as string}>{label as string}</label>
             <input id={name as string} name={name as string} type="number" step="0.1" defaultValue={value as number} required />
           </div>
         ))}
+        {tracksTemperature ? (
+          <div className="space-y-2">
+            <label htmlFor="temperature">Temperatura da água</label>
+            <input id="temperature" name="temperature" type="number" step="0.1" defaultValue={defaults?.temperature ?? 27} required />
+          </div>
+        ) : null}
         <div className="space-y-2 md:col-span-2 xl:col-span-3">
           <label htmlFor="productsApplied">Produtos aplicados</label>
           <textarea id="productsApplied" name="productsApplied" rows={3} defaultValue={defaults?.productsApplied} placeholder="Ex.: 200 g de cloro granulado + 100 ml de algicida" required />

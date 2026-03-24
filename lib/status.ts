@@ -5,7 +5,7 @@ export type MeasurementInput = {
   ph: number;
   alkalinity: number;
   hardness: number;
-  temperature: number;
+  temperature?: number | null;
 };
 
 function evaluateParameter(value: number, min: number, max: number): PoolStatus {
@@ -17,14 +17,26 @@ function evaluateParameter(value: number, min: number, max: number): PoolStatus 
   return 'CRITICAL';
 }
 
-export function computeMeasurementStatuses(pool: Pool, values: MeasurementInput) {
+export function computeMeasurementStatuses(pool: Pick<Pool, 'tracksTemperature' | 'idealChlorineMin' | 'idealChlorineMax' | 'idealPhMin' | 'idealPhMax' | 'idealAlkalinityMin' | 'idealAlkalinityMax' | 'idealHardnessMin' | 'idealHardnessMax' | 'idealTemperatureMin' | 'idealTemperatureMax'>, values: MeasurementInput) {
   const chlorineStatus = evaluateParameter(values.chlorine, pool.idealChlorineMin, pool.idealChlorineMax);
   const phStatus = evaluateParameter(values.ph, pool.idealPhMin, pool.idealPhMax);
   const alkalinityStatus = evaluateParameter(values.alkalinity, pool.idealAlkalinityMin, pool.idealAlkalinityMax);
   const hardnessStatus = evaluateParameter(values.hardness, pool.idealHardnessMin, pool.idealHardnessMax);
-  const temperatureStatus = evaluateParameter(values.temperature, pool.idealTemperatureMin, pool.idealTemperatureMax);
 
-  const statuses = [chlorineStatus, phStatus, alkalinityStatus, hardnessStatus, temperatureStatus];
+  const canEvaluateTemperature = pool.tracksTemperature
+    && typeof values.temperature === 'number'
+    && typeof pool.idealTemperatureMin === 'number'
+    && typeof pool.idealTemperatureMax === 'number';
+
+  const temperatureValue = typeof values.temperature === 'number' ? values.temperature : null;
+  const temperatureMin = typeof pool.idealTemperatureMin === 'number' ? pool.idealTemperatureMin : null;
+  const temperatureMax = typeof pool.idealTemperatureMax === 'number' ? pool.idealTemperatureMax : null;
+
+  const temperatureStatus = canEvaluateTemperature && temperatureValue !== null && temperatureMin !== null && temperatureMax !== null
+    ? evaluateParameter(temperatureValue, temperatureMin, temperatureMax)
+    : 'NORMAL';
+
+  const statuses = [chlorineStatus, phStatus, alkalinityStatus, hardnessStatus, ...(pool.tracksTemperature ? [temperatureStatus] : [])];
 
   const overallStatus: PoolStatus = statuses.includes('CRITICAL')
     ? 'CRITICAL'

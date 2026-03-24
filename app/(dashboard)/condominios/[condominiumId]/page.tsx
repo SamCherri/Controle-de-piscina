@@ -39,7 +39,11 @@ export default async function CondominiumPage({ params }: { params: { condominiu
               <div className="grid gap-2 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
                 <p><strong>Faixas:</strong> Cloro {pool.idealChlorineMin}-{pool.idealChlorineMax} ppm • pH {pool.idealPhMin}-{pool.idealPhMax}</p>
                 <p><strong>Alcalinidade:</strong> {pool.idealAlkalinityMin}-{pool.idealAlkalinityMax} ppm • <strong>Dureza:</strong> {pool.idealHardnessMin}-{pool.idealHardnessMax} ppm</p>
-                <p><strong>Temperatura:</strong> {pool.idealTemperatureMin}-{pool.idealTemperatureMax} °C</p>
+                {pool.tracksTemperature ? (
+                  <p><strong>Temperatura:</strong> {pool.idealTemperatureMin}-{pool.idealTemperatureMax} °C</p>
+                ) : (
+                  <p><strong>Temperatura:</strong> não monitorada nesta piscina</p>
+                )}
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link href={`/condominios/${condominium.id}/piscinas/${pool.id}`} className="rounded-2xl bg-brand-600 px-4 py-2 text-sm font-medium text-white">Ver painel</Link>

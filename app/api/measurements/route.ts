@@ -38,6 +38,10 @@ export async function POST(request: Request) {
   const pool = await prisma.pool.findUnique({ where: { id: parsed.data.poolId } });
   if (!pool) return NextResponse.json({ error: 'Piscina não encontrada.' }, { status: 404 });
 
+  if (pool.tracksTemperature && typeof parsed.data.temperature !== 'number') {
+    return NextResponse.json({ error: 'Informe a temperatura para piscinas com monitoramento ativo.' }, { status: 400 });
+  }
+
   const photoPersistence = await resolveMeasurementPhotoPersistence({
     photoPath: parsed.data.photoPath
   });
@@ -50,6 +54,7 @@ export async function POST(request: Request) {
   const measurement = await prisma.measurement.create({
     data: {
       ...parsed.data,
+      temperature: pool.tracksTemperature ? parsed.data.temperature : null,
       measuredAt: new Date(parsed.data.measuredAt),
       photoPath: photoPersistence.kind === 'preserved-legacy' ? photoPersistence.photoPath : null,
       ...(photoPersistence.kind === 'embedded'

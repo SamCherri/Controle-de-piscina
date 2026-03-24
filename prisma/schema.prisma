@@ -30,20 +30,20 @@ model AdminUser {
 }
 
 model PasswordResetToken {
-  id         String    @id @default(cuid())
-  userId     String
-  tokenHash  String    @unique
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime  @default(now())
-  user       AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([expiresAt])
 }
 
 model AuthAuditLog {
-  id        String    @id @default(cuid())
+  id        String     @id @default(cuid())
   userId    String?
   email     String
   action    String
@@ -51,7 +51,7 @@ model AuthAuditLog {
   userAgent String?
   success   Boolean
   metadata  Json?
-  createdAt DateTime  @default(now())
+  createdAt DateTime   @default(now())
   user      AdminUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([email, createdAt(sort: Desc)])
@@ -88,8 +88,9 @@ model Pool {
   idealAlkalinityMax  Float         @default(120)
   idealHardnessMin    Float         @default(200)
   idealHardnessMax    Float         @default(400)
-  idealTemperatureMin Float         @default(24)
-  idealTemperatureMax Float         @default(30)
+  tracksTemperature   Boolean       @default(true)
+  idealTemperatureMin Float?        @default(24)
+  idealTemperatureMax Float?        @default(30)
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
   condominium         Condominium   @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
@@ -99,7 +100,7 @@ model Pool {
 }
 
 model Measurement {
-  id                String      @id @default(cuid())
+  id                String     @id @default(cuid())
   poolId            String
   measuredAt        DateTime
   responsibleName   String
@@ -107,7 +108,7 @@ model Measurement {
   ph                Float
   alkalinity        Float
   hardness          Float
-  temperature       Float
+  temperature       Float?
   productsApplied   String
   observations      String?
   photoPath         String?
@@ -119,9 +120,9 @@ model Measurement {
   hardnessStatus    PoolStatus
   temperatureStatus PoolStatus
   overallStatus     PoolStatus
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  pool              Pool        @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  pool              Pool       @relation(fields: [poolId], references: [id], onDelete: Cascade)
 
   @@index([poolId, measuredAt(sort: Desc)])
 }
