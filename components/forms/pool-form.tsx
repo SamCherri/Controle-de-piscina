@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useFormState, useFormStatus } from 'react-dom';
 import { createPoolAction, updatePoolAction } from '@/lib/actions';
 
@@ -9,6 +10,7 @@ type PoolFormInitialValues = {
   name: string;
   description?: string | null;
   locationNote?: string | null;
+  hasCoverPhoto?: boolean;
   idealChlorineMin: number;
   idealChlorineMax: number;
   idealPhMin: number;
@@ -55,9 +57,12 @@ const DEFAULT_NUMERIC_FIELDS = [
 
 export function PoolForm({ condominiumId, initialValues, mode = 'create' }: PoolFormProps) {
   const [state, action] = useFormState(mode === 'edit' ? updatePoolAction : createPoolAction, {});
+  const coverPhotoPreviewUrl = initialValues?.id && initialValues?.hasCoverPhoto
+    ? `/api/pools/${initialValues.id}/cover-photo`
+    : undefined;
 
   return (
-    <form action={action} className="card grid gap-5">
+    <form action={action} encType="multipart/form-data" className="card grid gap-5">
       <input type="hidden" name="condominiumId" value={condominiumId} />
       {mode === 'edit' ? <input type="hidden" name="poolId" value={initialValues?.id ?? ''} /> : null}
 
@@ -83,6 +88,23 @@ export function PoolForm({ condominiumId, initialValues, mode = 'create' }: Pool
             placeholder="Ao lado do salão de festas"
             defaultValue={initialValues?.locationNote ?? ''}
           />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <label htmlFor="coverPhoto">Foto fixa da piscina (modo morador)</label>
+          <input id="coverPhoto" name="coverPhoto" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+          <p className="text-xs text-slate-500">Aceita JPG, PNG ou WEBP com até 5 MB. Esta foto aparece no modo morador do QR Code.</p>
+          {coverPhotoPreviewUrl ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-2 text-xs font-medium text-slate-600">Foto atual cadastrada</p>
+              <Image
+                src={coverPhotoPreviewUrl}
+                alt={`Foto fixa da piscina ${initialValues?.name ?? ''}`}
+                width={960}
+                height={540}
+                className="h-48 w-full rounded-xl object-cover"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
       <div>
