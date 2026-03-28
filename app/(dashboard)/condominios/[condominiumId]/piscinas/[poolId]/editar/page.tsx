@@ -17,7 +17,7 @@ export default async function EditPoolPage({ params }: { params: { condominiumId
     <>
       <PageHeader
         title={`Editar piscina: ${pool.name}`}
-        description="Atualize identificação, foto fixa do modo morador, observações e faixas ideais para cálculo automático de status."
+        description="Atualize identificação, foto fixa do modo compartilhar, observações e faixas ideais para cálculo automático de status."
       />
       <PoolForm
         mode="edit"

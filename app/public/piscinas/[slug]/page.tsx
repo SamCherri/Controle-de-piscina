@@ -1,11 +1,17 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { BackButton } from '@/components/back-button';
 import { prisma } from '@/lib/db';
 
 function formatResidentDate(date: Date) {
   return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+}
+
+function formatValue(value: number, unit?: string) {
+  return unit ? `${value.toFixed(1)} ${unit}` : value.toFixed(1);
 }
 
 export default async function PublicPoolPage({ params }: { params: { slug: string } }) {
@@ -18,6 +24,10 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
         take: 1,
         select: {
           measuredAt: true,
+          chlorine: true,
+          ph: true,
+          alkalinity: true,
+          hardness: true,
           temperature: true
         }
       }
@@ -31,9 +41,16 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900 md:py-10">
+      <section className="mx-auto mb-4 flex w-full max-w-2xl justify-between gap-2">
+        <BackButton fallbackHref="/" label="Voltar" />
+        <Link href={`/public/piscinas/${pool.slug}`} className="inline-flex items-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700">
+          Atualizar
+        </Link>
+      </section>
+
       <section className="mx-auto w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
         <header className="space-y-1 border-b border-slate-100 px-5 pb-4 pt-5 md:px-8 md:pt-7">
-          <p className="text-xs font-medium uppercase tracking-[0.24em] text-brand-700">Modo morador</p>
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-brand-700">Modo compartilhar</p>
           <h1 className="text-2xl font-semibold leading-tight md:text-3xl">{pool.condominium.name}</h1>
           <p className="text-sm text-slate-600 md:text-base">{pool.name}</p>
         </header>
@@ -50,20 +67,32 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
             />
           ) : (
             <div className="flex h-64 w-full items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center md:h-80">
-              <p className="max-w-xs text-sm text-slate-500">Foto da piscina ainda não cadastrada. Solicite ao responsável do condomínio para adicionar a imagem do modo morador.</p>
+              <p className="max-w-xs text-sm text-slate-500">Foto da piscina ainda não cadastrada. Solicite ao responsável do condomínio para adicionar a imagem do modo compartilhar.</p>
             </div>
           )}
 
-          {pool.tracksTemperature ? (
-            <div className="mt-6 rounded-2xl bg-brand-600 px-5 py-5 text-white md:px-6 md:py-6">
-              <p className="text-xs uppercase tracking-[0.22em] text-brand-100">Temperatura atual</p>
-              {latestMeasurement && typeof latestMeasurement.temperature === 'number' ? (
-                <p className="mt-2 text-5xl font-semibold leading-none md:text-6xl">{latestMeasurement.temperature.toFixed(1)}°C</p>
-              ) : (
-                <p className="mt-3 text-lg font-medium">Sem medição disponível no momento</p>
-              )}
+          {latestMeasurement ? (
+            <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+              <ParameterCard label="Cloro" value={formatValue(latestMeasurement.chlorine, 'ppm')} />
+              <ParameterCard label="pH" value={formatValue(latestMeasurement.ph)} />
+              <ParameterCard label="Alcalinidade" value={formatValue(latestMeasurement.alkalinity, 'ppm')} />
+              <ParameterCard label="Dureza" value={formatValue(latestMeasurement.hardness, 'ppm')} />
+              {pool.tracksTemperature ? (
+                <ParameterCard
+                  label="Temperatura"
+                  value={
+                    typeof latestMeasurement.temperature === 'number'
+                      ? formatValue(latestMeasurement.temperature, '°C')
+                      : 'Sem leitura'
+                  }
+                />
+              ) : null}
             </div>
-          ) : null}
+          ) : (
+            <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+              Ainda não foi registrada nenhuma medição para esta piscina.
+            </div>
+          )}
 
           <p className="mt-4 text-sm text-slate-600">
             {latestMeasurement
@@ -73,5 +102,14 @@ export default async function PublicPoolPage({ params }: { params: { slug: strin
         </div>
       </section>
     </main>
+  );
+}
+
+function ParameterCard({ label, value }: { label: string; value: string }) {
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-slate-900">{value}</p>
+    </article>
   );
 }

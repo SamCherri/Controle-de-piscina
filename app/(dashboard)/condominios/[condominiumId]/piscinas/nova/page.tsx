@@ -9,7 +9,7 @@ export default async function NewPoolPage({ params }: { params: { condominiumId:
 
   return (
     <>
-      <PageHeader title={`Nova piscina em ${condominium.name}`} description="Defina identificação, foto fixa do modo morador e faixas ideais de referência para classificação automática." />
+      <PageHeader title={`Nova piscina em ${condominium.name}`} description="Defina identificação, foto fixa do modo compartilhar e faixas ideais de referência para classificação automática." />
       <PoolForm condominiumId={condominium.id} />
     </>
   );
