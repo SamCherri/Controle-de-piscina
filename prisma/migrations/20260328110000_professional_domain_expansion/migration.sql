@@ -2,12 +2,17 @@
 CREATE TYPE "AdminUserRole" AS ENUM ('admin', 'operator');
 
 ALTER TABLE "AdminUser"
+  ALTER COLUMN "role" DROP DEFAULT;
+
+ALTER TABLE "AdminUser"
   ALTER COLUMN "role" TYPE "AdminUserRole"
   USING CASE
     WHEN "role" IN ('admin', 'operator') THEN "role"::"AdminUserRole"
     ELSE 'operator'::"AdminUserRole"
-  END,
-  ALTER COLUMN "role" SET DEFAULT 'admin';
+  END;
+
+ALTER TABLE "AdminUser"
+  ALTER COLUMN "role" SET DEFAULT 'admin'::"AdminUserRole";
 
 -- Track authenticated user that launched each measurement.
 ALTER TABLE "Measurement"
