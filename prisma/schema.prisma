@@ -13,12 +13,38 @@ enum PoolStatus {
   CRITICAL
 }
 
+enum AdminUserRole {
+  admin
+  operator
+}
+
+enum PoolProfileType {
+  STANDARD
+  ADULTO
+  INFANTIL
+  AQUECIDA
+  COBERTA
+}
+
+enum MaintenanceTaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
 model AdminUser {
   id                  String               @id @default(cuid())
   name                String
   email               String               @unique
   passwordHash        String
-  role                String               @default("admin")
+  role                AdminUserRole        @default(admin)
   mustChangePassword  Boolean              @default(false)
   lastLoginAt         DateTime?
   failedLoginAttempts Int                  @default(0)
@@ -27,6 +53,9 @@ model AdminUser {
   updatedAt           DateTime             @updatedAt
   passwordResetTokens PasswordResetToken[]
   authAuditLogs       AuthAuditLog[]
+  measurements        Measurement[]
+  maintenanceTasks    MaintenanceTask[]
+  createdAlerts       PoolAlert[]          @relation("AlertCreatedBy")
 }
 
 model PasswordResetToken {
@@ -72,57 +101,151 @@ model Condominium {
 }
 
 model Pool {
-  id                  String        @id @default(cuid())
+  id                  String              @id @default(cuid())
   condominiumId       String
   name                String
-  slug                String        @unique
+  slug                String              @unique
   description         String?
   locationNote        String?
   coverPhotoData      Bytes?
   coverPhotoMimeType  String?
-  idealChlorineMin    Float         @default(1)
-  idealChlorineMax    Float         @default(3)
-  idealPhMin          Float         @default(7.2)
-  idealPhMax          Float         @default(7.8)
-  idealAlkalinityMin  Float         @default(80)
-  idealAlkalinityMax  Float         @default(120)
-  idealHardnessMin    Float         @default(200)
-  idealHardnessMax    Float         @default(400)
-  tracksTemperature   Boolean       @default(true)
-  idealTemperatureMin Float?        @default(24)
-  idealTemperatureMax Float?        @default(30)
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  condominium         Condominium   @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  idealChlorineMin    Float               @default(1)
+  idealChlorineMax    Float               @default(3)
+  idealPhMin          Float               @default(7.2)
+  idealPhMax          Float               @default(7.8)
+  idealAlkalinityMin  Float               @default(80)
+  idealAlkalinityMax  Float               @default(120)
+  idealHardnessMin    Float               @default(200)
+  idealHardnessMax    Float               @default(400)
+  tracksTemperature   Boolean             @default(true)
+  idealTemperatureMin Float?              @default(24)
+  idealTemperatureMax Float?              @default(30)
+  profileType         PoolProfileType     @default(STANDARD)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  condominium         Condominium         @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
   measurements        Measurement[]
+  maintenanceTasks    MaintenanceTask[]
+  checklists          InspectionChecklist[]
+  alerts              PoolAlert[]
+  publicShareConfig   PublicShareConfig?
 
   @@index([condominiumId])
 }
 
 model Measurement {
-  id                String     @id @default(cuid())
-  poolId            String
-  measuredAt        DateTime
-  responsibleName   String
-  chlorine          Float
-  ph                Float
-  alkalinity        Float
-  hardness          Float
-  temperature       Float?
-  productsApplied   String
-  observations      String?
-  photoPath         String?
-  photoData         Bytes?
-  photoMimeType     String?
-  chlorineStatus    PoolStatus
-  phStatus          PoolStatus
-  alkalinityStatus  PoolStatus
-  hardnessStatus    PoolStatus
-  temperatureStatus PoolStatus
-  overallStatus     PoolStatus
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  pool              Pool       @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  id                   String                   @id @default(cuid())
+  poolId               String
+  measuredById         String?
+  measuredAt           DateTime
+  responsibleName      String
+  chlorine             Float
+  ph                   Float
+  alkalinity           Float
+  hardness             Float
+  temperature          Float?
+  productsApplied      String
+  observations         String?
+  photoPath            String?
+  photoData            Bytes?
+  photoMimeType        String?
+  chlorineStatus       PoolStatus
+  phStatus             PoolStatus
+  alkalinityStatus     PoolStatus
+  hardnessStatus       PoolStatus
+  temperatureStatus    PoolStatus
+  overallStatus        PoolStatus
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  pool                 Pool                     @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  measuredBy           AdminUser?               @relation(fields: [measuredById], references: [id], onDelete: SetNull)
+  attachments          MeasurementAttachment[]
+  chemicalApplications ChemicalApplication[]
 
   @@index([poolId, measuredAt(sort: Desc)])
+  @@index([measuredById])
+}
+
+model MeasurementAttachment {
+  id              String      @id @default(cuid())
+  measurementId   String
+  fileName        String
+  fileMimeType    String
+  fileData        Bytes?
+  filePath        String?
+  uploadedAt      DateTime    @default(now())
+  measurement     Measurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+
+  @@index([measurementId])
+}
+
+model ChemicalApplication {
+  id                 String      @id @default(cuid())
+  measurementId      String
+  productName        String
+  dosage             String
+  notes              String?
+  appliedAt          DateTime    @default(now())
+  measurement        Measurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+
+  @@index([measurementId])
+}
+
+model MaintenanceTask {
+  id              String                @id @default(cuid())
+  poolId          String
+  title           String
+  description     String?
+  status          MaintenanceTaskStatus @default(OPEN)
+  dueDate         DateTime?
+  completedAt     DateTime?
+  assignedToId    String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  pool            Pool                  @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  assignedTo      AdminUser?            @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([poolId, status])
+  @@index([assignedToId])
+}
+
+model InspectionChecklist {
+  id              String   @id @default(cuid())
+  poolId          String
+  title           String
+  checklistItems  Json
+  performedAt     DateTime @default(now())
+  performedBy     String?
+  notes           String?
+  pool            Pool     @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@index([poolId, performedAt(sort: Desc)])
+}
+
+model PoolAlert {
+  id              String        @id @default(cuid())
+  poolId          String
+  title           String
+  message         String
+  severity        AlertSeverity
+  isResolved      Boolean       @default(false)
+  resolvedAt      DateTime?
+  createdById     String?
+  createdAt       DateTime      @default(now())
+  pool            Pool          @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  createdBy       AdminUser?    @relation("AlertCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([poolId, severity, isResolved])
+  @@index([createdById])
+}
+
+model PublicShareConfig {
+  id                    String   @id @default(cuid())
+  poolId                String   @unique
+  isPublicEnabled       Boolean  @default(true)
+  showHistoricalSummary Boolean  @default(true)
+  showResponsibleName   Boolean  @default(true)
+  customMessage         String?
+  updatedAt             DateTime @updatedAt
+  pool                  Pool     @relation(fields: [poolId], references: [id], onDelete: Cascade)
 }

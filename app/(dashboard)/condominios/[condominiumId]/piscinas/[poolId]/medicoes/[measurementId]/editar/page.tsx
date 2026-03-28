@@ -44,6 +44,18 @@ export default async function EditMeasurementPage({ params }: { params: { condom
       <MeasurementForm
         poolId={measurement.poolId}
         tracksTemperature={measurement.pool.tracksTemperature}
+        idealRanges={{
+          idealChlorineMin: measurement.pool.idealChlorineMin,
+          idealChlorineMax: measurement.pool.idealChlorineMax,
+          idealPhMin: measurement.pool.idealPhMin,
+          idealPhMax: measurement.pool.idealPhMax,
+          idealAlkalinityMin: measurement.pool.idealAlkalinityMin,
+          idealAlkalinityMax: measurement.pool.idealAlkalinityMax,
+          idealHardnessMin: measurement.pool.idealHardnessMin,
+          idealHardnessMax: measurement.pool.idealHardnessMax,
+          idealTemperatureMin: measurement.pool.idealTemperatureMin,
+          idealTemperatureMax: measurement.pool.idealTemperatureMax
+        }}
         defaults={{
           id: measurement.id,
           measuredAt,
