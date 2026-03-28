@@ -2,15 +2,48 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { ComponentType } from 'react';
 import { Building2, Home, Users, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: Home, matches: (pathname: string) => pathname === '/' },
-  { href: '/', label: 'Condomínios', icon: Building2, matches: (pathname: string) => pathname.startsWith('/condominios') },
-  { href: '/usuarios', label: 'Usuários', icon: Users, matches: (pathname: string) => pathname.startsWith('/usuarios') },
-  { href: '/debug/fotos', label: 'Diagnóstico', icon: Wrench, matches: (pathname: string) => pathname.startsWith('/debug') }
-] as const;
+type SidebarNavItem = {
+  href: string;
+  label: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+  matches: (pathname: string) => boolean;
+};
+
+const NAV_ITEMS: SidebarNavItem[] = [
+  {
+    href: '/',
+    label: 'Dashboard',
+    description: 'Visão geral do dia',
+    icon: Home,
+    matches: (pathname: string) => pathname === '/'
+  },
+  {
+    href: '/condominios',
+    label: 'Condomínios',
+    description: 'Locais e piscinas',
+    icon: Building2,
+    matches: (pathname: string) => pathname.startsWith('/condominios')
+  },
+  {
+    href: '/usuarios',
+    label: 'Usuários',
+    description: 'Equipe e acessos',
+    icon: Users,
+    matches: (pathname: string) => pathname.startsWith('/usuarios')
+  },
+  {
+    href: '/debug/fotos',
+    label: 'Diagnóstico',
+    description: 'Auditoria de fotos',
+    icon: Wrench,
+    matches: (pathname: string) => pathname.startsWith('/debug')
+  }
+];
 
 export function DashboardSidebar() {
   const pathname = usePathname();
@@ -32,12 +65,15 @@ export function DashboardSidebar() {
               key={item.label}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition',
+                'flex items-start gap-3 rounded-xl px-3 py-2.5 transition',
                 isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               )}
             >
-              <Icon className="h-4 w-4" />
-              {item.label}
+              <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+              <span className="flex flex-col">
+                <span className="text-sm font-medium">{item.label}</span>
+                <span className={cn('text-xs', isActive ? 'text-brand-600/80' : 'text-slate-400')}>{item.description}</span>
+              </span>
             </Link>
           );
         })}
