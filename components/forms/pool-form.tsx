@@ -110,9 +110,9 @@ export function PoolForm({ condominiumId, initialValues, mode = 'create' }: Pool
           <p className="text-xs text-slate-500">Desative para piscinas não aquecidas. A temperatura deixará de ser obrigatória nas medições e sairá dos painéis.</p>
         </div>
         <div className="space-y-2 md:col-span-2">
-          <label htmlFor="coverPhoto">Foto fixa da piscina (modo morador)</label>
+          <label htmlFor="coverPhoto">Foto fixa da piscina (modo compartilhar)</label>
           <input id="coverPhoto" name="coverPhoto" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
-          <p className="text-xs text-slate-500">Aceita JPG, PNG ou WEBP com até 5 MB. Esta foto aparece no modo morador do QR Code.</p>
+          <p className="text-xs text-slate-500">Aceita JPG, PNG ou WEBP com até 5 MB. Esta foto aparece no modo compartilhar do QR Code.</p>
           {coverPhotoPreviewUrl ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
               <p className="mb-2 text-xs font-medium text-slate-600">Foto atual cadastrada</p>

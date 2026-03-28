@@ -78,7 +78,7 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
 
   return (
     <>
-      <PageHeader title={pool.name} description={`Condomínio ${pool.condominium.name}. Monitore status atual, histórico completo, foto mais recente e QR Code do modo morador.`} actionLabel="Nova medição" actionHref={`/condominios/${pool.condominiumId}/piscinas/${pool.id}/medicoes/nova`} />
+      <PageHeader title={pool.name} description={`Condomínio ${pool.condominium.name}. Monitore status atual, histórico completo, foto mais recente e QR Code do modo compartilhar.`} actionLabel="Nova medição" actionHref={`/condominios/${pool.condominiumId}/piscinas/${pool.id}/medicoes/nova`} />
       {latest ? (
         <section className="grid gap-6 xl:grid-cols-[1.5fr_0.8fr]">
           <div className="space-y-6">
@@ -183,11 +183,11 @@ export default async function PoolPage({ params }: { params: { condominiumId: st
           </div>
           <aside className="space-y-6">
             <div className="card space-y-4">
-              <h3 className="text-lg font-semibold text-slate-900">QR Code do modo morador</h3>
-              <Image src={qrCode} alt="QR Code do modo morador" width={280} height={280} className="mx-auto rounded-2xl border border-slate-200 bg-white p-3" unoptimized />
+              <h3 className="text-lg font-semibold text-slate-900">QR Code do modo compartilhar</h3>
+              <Image src={qrCode} alt="QR Code do modo compartilhar" width={280} height={280} className="mx-auto rounded-2xl border border-slate-200 bg-white p-3" unoptimized />
               <PublicLinkCard publicUrl={publicUrl} warning={publicAppUrl.warning} />
               <Link href={`/condominios/${pool.condominiumId}/piscinas/${pool.id}/editar`} className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">Editar configuração da piscina</Link>
-              <Link href={`/public/piscinas/${pool.slug}`} className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">Abrir modo morador</Link>
+              <Link href={`/public/piscinas/${pool.slug}`} className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">Abrir modo compartilhar</Link>
               <Link href={`/debug/fotos?poolId=${pool.id}`} className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">Abrir auditoria de fotos desta piscina</Link>
             </div>
             <div className="card space-y-3">
