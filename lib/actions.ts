@@ -282,11 +282,17 @@ export async function createPoolAction(_: ActionState, formData: FormData): Prom
     return { error: upload.error };
   }
 
-  const slugBase = slugify(`${parsed.data.name}-${Date.now()}`);
+  const slugBase = slugify(parsed.data.name);
+  let slug = slugBase;
+  let index = 1;
+  while (await prisma.pool.findUnique({ where: { slug } })) {
+    slug = `${slugBase}-${index++}`;
+  }
+
   const createdPool = await prisma.pool.create({
     data: {
       ...parsed.data,
-      slug: slugBase,
+      slug,
       idealTemperatureMin: parsed.data.tracksTemperature ? parsed.data.idealTemperatureMin : null,
       idealTemperatureMax: parsed.data.tracksTemperature ? parsed.data.idealTemperatureMax : null,
       coverPhotoData: upload.buffer ? toPrismaBytes(upload.buffer) : null,
@@ -385,9 +391,10 @@ export async function updatePoolAction(_: ActionState, formData: FormData): Prom
 }
 
 export async function saveMeasurementAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  await requireSession();
+  const sessionUser = await requireSession();
 
   const raw = Object.fromEntries(formData.entries());
+  const intent = String(formData.get('intent') ?? 'save');
   const photo = formData.get('photo') as File | null;
   const parsed = measurementSchema.safeParse({ ...raw, photoPath: raw.photoPath || undefined });
 
@@ -472,7 +479,8 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
         temperature: pool.tracksTemperature ? parsed.data.temperature : null,
         measuredAt: new Date(parsed.data.measuredAt),
         ...photoFields,
-        ...statuses
+        ...statuses,
+        measuredById: sessionUser.id
       }
     });
   } else {
@@ -482,7 +490,8 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
         temperature: pool.tracksTemperature ? parsed.data.temperature : null,
         measuredAt: new Date(parsed.data.measuredAt),
         ...photoFields,
-        ...statuses
+        ...statuses,
+        measuredById: sessionUser.id
       }
     });
   }
@@ -494,8 +503,13 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
   }
   revalidatePath(`/debug/fotos`);
   revalidatePath(`/public/piscinas/${pool.slug}`);
+  if (intent === 'save_and_new') {
+    redirect(`/condominios/${pool.condominiumId}/piscinas/${pool.id}/medicoes/nova`);
+  }
+
   redirect(`/condominios/${pool.condominiumId}/piscinas/${pool.id}`);
 }
+
 
 export async function deleteMeasurementAction(formData: FormData) {
   await requireSession();

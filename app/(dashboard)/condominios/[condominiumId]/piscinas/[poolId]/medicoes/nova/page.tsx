@@ -17,7 +17,7 @@ export default async function NewMeasurementPage({ params }: { params: { condomi
   return (
     <>
       <PageHeader title={`Nova medição - ${pool.name}`} description="Faça o lançamento rápido dos parâmetros, produtos aplicados, foto e observações da piscina." />
-      <MeasurementForm poolId={pool.id} tracksTemperature={pool.tracksTemperature} defaults={{ measuredAt: currentLocalDateTime(), responsibleName: '', chlorine: 1.5, ph: 7.4, alkalinity: 95, hardness: 240, temperature: pool.tracksTemperature ? 27 : undefined, productsApplied: '' }} />
+      <MeasurementForm poolId={pool.id} tracksTemperature={pool.tracksTemperature} idealRanges={{ idealChlorineMin: pool.idealChlorineMin, idealChlorineMax: pool.idealChlorineMax, idealPhMin: pool.idealPhMin, idealPhMax: pool.idealPhMax, idealAlkalinityMin: pool.idealAlkalinityMin, idealAlkalinityMax: pool.idealAlkalinityMax, idealHardnessMin: pool.idealHardnessMin, idealHardnessMax: pool.idealHardnessMax, idealTemperatureMin: pool.idealTemperatureMin, idealTemperatureMax: pool.idealTemperatureMax }} defaults={{ measuredAt: currentLocalDateTime(), responsibleName: '', chlorine: 1.5, ph: 7.4, alkalinity: 95, hardness: 240, temperature: pool.tracksTemperature ? 27 : undefined, productsApplied: '' }} />
     </>
   );
 }

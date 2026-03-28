@@ -13,12 +13,17 @@ enum PoolStatus {
   CRITICAL
 }
 
+enum AdminUserRole {
+  admin
+  operator
+}
+
 model AdminUser {
   id                  String               @id @default(cuid())
   name                String
   email               String               @unique
   passwordHash        String
-  role                String               @default("admin")
+  role                AdminUserRole        @default(admin)
   mustChangePassword  Boolean              @default(false)
   lastLoginAt         DateTime?
   failedLoginAttempts Int                  @default(0)
@@ -27,6 +32,7 @@ model AdminUser {
   updatedAt           DateTime             @updatedAt
   passwordResetTokens PasswordResetToken[]
   authAuditLogs       AuthAuditLog[]
+  measurements        Measurement[]
 }
 
 model PasswordResetToken {
@@ -100,8 +106,9 @@ model Pool {
 }
 
 model Measurement {
-  id                String     @id @default(cuid())
+  id                String        @id @default(cuid())
   poolId            String
+  measuredById      String?
   measuredAt        DateTime
   responsibleName   String
   chlorine          Float
@@ -120,9 +127,11 @@ model Measurement {
   hardnessStatus    PoolStatus
   temperatureStatus PoolStatus
   overallStatus     PoolStatus
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  pool              Pool       @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  pool              Pool          @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  measuredBy        AdminUser?    @relation(fields: [measuredById], references: [id], onDelete: SetNull)
 
   @@index([poolId, measuredAt(sort: Desc)])
+  @@index([measuredById])
 }
