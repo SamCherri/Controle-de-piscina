@@ -8,11 +8,9 @@ export type MeasurementInput = {
   temperature?: number | null;
 };
 
-export type PoolProfile = 'STANDARD' | 'CHILDREN' | 'HEATED' | 'INDOOR';
 export type WaterParameter = 'chlorine' | 'ph' | 'alkalinity' | 'hardness' | 'temperature';
 
 type ParameterSeverityConfig = {
-  attentionDeltaRatio: number;
   criticalDeltaRatio: number;
   lowActions: { attention: string; critical: string };
   highActions: { attention: string; critical: string };
@@ -41,7 +39,6 @@ const PARAMETER_META: Record<WaterParameter, { label: string; unit: string }> = 
 
 const STATUS_CONFIG: Record<WaterParameter, ParameterSeverityConfig> = {
   chlorine: {
-    attentionDeltaRatio: 0.2,
     criticalDeltaRatio: 0.45,
     lowActions: {
       attention: 'Ajustar dosagem de cloro gradualmente e repetir leitura em até 2 horas.',
@@ -53,7 +50,6 @@ const STATUS_CONFIG: Record<WaterParameter, ParameterSeverityConfig> = {
     }
   },
   ph: {
-    attentionDeltaRatio: 0.12,
     criticalDeltaRatio: 0.24,
     lowActions: {
       attention: 'Aplicar elevador de pH em pequenas doses e recircular a água.',
@@ -65,7 +61,6 @@ const STATUS_CONFIG: Record<WaterParameter, ParameterSeverityConfig> = {
     }
   },
   alkalinity: {
-    attentionDeltaRatio: 0.2,
     criticalDeltaRatio: 0.4,
     lowActions: {
       attention: 'Adicionar elevador de alcalinidade e revisar estabilidade do pH.',
@@ -77,7 +72,6 @@ const STATUS_CONFIG: Record<WaterParameter, ParameterSeverityConfig> = {
     }
   },
   hardness: {
-    attentionDeltaRatio: 0.15,
     criticalDeltaRatio: 0.35,
     lowActions: {
       attention: 'Reforçar dureza com ajuste gradual para proteger superfícies e equipamentos.',
@@ -89,7 +83,6 @@ const STATUS_CONFIG: Record<WaterParameter, ParameterSeverityConfig> = {
     }
   },
   temperature: {
-    attentionDeltaRatio: 0.18,
     criticalDeltaRatio: 0.32,
     lowActions: {
       attention: 'Ajustar operação do aquecimento para faixa de conforto e segurança.',

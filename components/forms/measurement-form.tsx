@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { saveMeasurementAction } from '@/lib/actions';
 import { evaluateMeasurement, statusMeta } from '@/lib/status';
@@ -66,6 +66,12 @@ export function MeasurementForm({ poolId, tracksTemperature, idealRanges, defaul
     temperature: defaults?.temperature ?? 27
   });
 
+  useEffect(() => () => {
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview);
+    }
+  }, [photoPreview]);
+
   const preview = useMemo(() => evaluateMeasurement({
     tracksTemperature,
     idealChlorineMin: idealRanges.idealChlorineMin,
@@ -114,13 +120,13 @@ export function MeasurementForm({ poolId, tracksTemperature, idealRanges, defaul
               capture="environment"
               onChange={event => {
                 const file = event.target.files?.[0];
-                if (!file) {
-                  setPhotoPreview(null);
-                  return;
-                }
+                setPhotoPreview(previous => {
+                  if (previous) {
+                    URL.revokeObjectURL(previous);
+                  }
 
-                const objectUrl = URL.createObjectURL(file);
-                setPhotoPreview(objectUrl);
+                  return file ? URL.createObjectURL(file) : null;
+                });
               }}
             />
             <p className="text-xs text-slate-500">No celular, o sistema prioriza a câmera traseira para agilizar evidências operacionais.</p>

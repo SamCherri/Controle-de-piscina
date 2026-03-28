@@ -6,11 +6,11 @@ import { Building2, Home, Users, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: Home },
-  { href: '/condominios/novo', label: 'Novo condomínio', icon: Building2 },
-  { href: '/usuarios', label: 'Usuários', icon: Users },
-  { href: '/debug/fotos', label: 'Diagnóstico', icon: Wrench }
-];
+  { href: '/', label: 'Dashboard', icon: Home, matches: (pathname: string) => pathname === '/' },
+  { href: '/', label: 'Condomínios', icon: Building2, matches: (pathname: string) => pathname.startsWith('/condominios') },
+  { href: '/usuarios', label: 'Usuários', icon: Users, matches: (pathname: string) => pathname.startsWith('/usuarios') },
+  { href: '/debug/fotos', label: 'Diagnóstico', icon: Wrench, matches: (pathname: string) => pathname.startsWith('/debug') }
+] as const;
 
 export function DashboardSidebar() {
   const pathname = usePathname();
@@ -25,11 +25,11 @@ export function DashboardSidebar() {
       <nav className="mt-6 space-y-1">
         {NAV_ITEMS.map(item => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+          const isActive = item.matches(pathname);
 
           return (
             <Link
-              key={item.href}
+              key={item.label}
               href={item.href}
               className={cn(
                 'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition',

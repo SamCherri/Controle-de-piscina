@@ -391,7 +391,7 @@ export async function updatePoolAction(_: ActionState, formData: FormData): Prom
 }
 
 export async function saveMeasurementAction(_: ActionState, formData: FormData): Promise<ActionState> {
-  await requireSession();
+  const sessionUser = await requireSession();
 
   const raw = Object.fromEntries(formData.entries());
   const intent = String(formData.get('intent') ?? 'save');
@@ -479,7 +479,8 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
         temperature: pool.tracksTemperature ? parsed.data.temperature : null,
         measuredAt: new Date(parsed.data.measuredAt),
         ...photoFields,
-        ...statuses
+        ...statuses,
+        measuredById: sessionUser.id
       }
     });
   } else {
@@ -489,7 +490,8 @@ export async function saveMeasurementAction(_: ActionState, formData: FormData):
         temperature: pool.tracksTemperature ? parsed.data.temperature : null,
         measuredAt: new Date(parsed.data.measuredAt),
         ...photoFields,
-        ...statuses
+        ...statuses,
+        measuredById: sessionUser.id
       }
     });
   }
